@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, Target, Trophy, Zap } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import JediMascot from '../components/JediMascot/JediMascot';
+import JediMascot3D from '../components/JediMascot/JediMascot3D';
 
 const Home: React.FC = () => {
   const { user } = useAuth();
@@ -139,9 +139,9 @@ const Home: React.FC = () => {
         </div>
       </div>
 
-      {/* Jedi Mascot */}
+      {/* 3D Jedi Mascot */}
       {user && (
-        <JediMascot 
+        <JediMascot3D 
           userRank={user.jedi_rank}
           streakDays={user.streak_days}
           totalPoints={user.total_points}

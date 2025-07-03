@@ -9,6 +9,7 @@ import Home from './pages/Home';
 import Auth from './pages/Auth';
 import Upload from './pages/Upload';
 import Skills from './pages/Skills';
+import Courses from './pages/Courses';
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,9 @@ function AppContent() {
             } />
             <Route path="/upload" element={
               user ? <Upload /> : <Navigate to="/auth" replace />
+            } />
+            <Route path="/courses" element={
+              user ? <Courses /> : <Navigate to="/auth" replace />
             } />
             <Route path="/skills" element={
               user ? <Skills /> : <Navigate to="/auth" replace />

@@ -11,6 +11,7 @@ const Upload: React.FC = () => {
   const [courseTitle, setCourseTitle] = useState('');
   const [courseDescription, setCourseDescription] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -21,8 +22,20 @@ const Upload: React.FC = () => {
     }
 
     setIsUploading(true);
+    setUploadProgress(0);
     
     try {
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
       // Upload file to Supabase storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
@@ -31,15 +44,20 @@ const Upload: React.FC = () => {
         .from('course-files')
         .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error('Failed to upload file to storage');
+      }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('course-files')
         .getPublicUrl(fileName);
 
+      setUploadProgress(95);
+
       // Create course record
-      const { error: courseError } = await supabase
+      const { data: courseData, error: courseError } = await supabase
         .from('courses')
         .insert([
           {
@@ -50,14 +68,29 @@ const Upload: React.FC = () => {
             file_type: file.type,
             progress: 0,
           },
-        ]);
+        ])
+        .select()
+        .single();
 
-      if (courseError) throw courseError;
+      if (courseError) {
+        console.error('Course creation error:', courseError);
+        throw new Error('Failed to create course record');
+      }
+
+      setUploadProgress(100);
+      clearInterval(progressInterval);
 
       toast.success('Course uploaded successfully!');
-      navigate('/courses');
+      
+      // Wait a moment to show completion, then navigate
+      setTimeout(() => {
+        navigate('/courses');
+      }, 1000);
+
     } catch (error: any) {
+      console.error('Upload error:', error);
       toast.error(error.message || 'Upload failed');
+      setUploadProgress(0);
     } finally {
       setIsUploading(false);
     }
@@ -113,6 +146,7 @@ const Upload: React.FC = () => {
                     onChange={(e) => setCourseTitle(e.target.value)}
                     className="w-full px-4 py-3 border border-[#CBD5E1] rounded-lg focus:ring-2 focus:ring-[#3CA7E0] focus:border-transparent outline-none transition-all duration-200"
                     placeholder="e.g., Introduction to Machine Learning"
+                    disabled={isUploading}
                   />
                 </div>
 
@@ -126,6 +160,7 @@ const Upload: React.FC = () => {
                     rows={4}
                     className="w-full px-4 py-3 border border-[#CBD5E1] rounded-lg focus:ring-2 focus:ring-[#3CA7E0] focus:border-transparent outline-none transition-all duration-200 resize-none"
                     placeholder="Brief description of what this course covers..."
+                    disabled={isUploading}
                   />
                 </div>
               </div>
@@ -137,7 +172,11 @@ const Upload: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
-            <FileUpload onFileUpload={handleFileUpload} isUploading={isUploading} />
+            <FileUpload 
+              onFileUpload={handleFileUpload} 
+              isUploading={isUploading}
+              uploadProgress={uploadProgress}
+            />
           </motion.div>
         </div>
 
