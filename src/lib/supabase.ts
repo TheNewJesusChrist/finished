@@ -3,18 +3,59 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables');
-  throw new Error('Missing Supabase environment variables');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true, // ✅ Enable session restore on refresh/redirect
+// Check if environment variables are properly configured
+const isValidUrl = (url: string) => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
   }
-});
+};
+
+const hasValidConfig = supabaseUrl && 
+                      supabaseAnonKey && 
+                      supabaseUrl !== 'your_supabase_url' && 
+                      supabaseAnonKey !== 'your_supabase_anon_key' &&
+                      isValidUrl(supabaseUrl);
+
+if (!hasValidConfig) {
+  console.error('❌ Supabase configuration error:');
+  console.error('Please update your .env file with valid Supabase credentials:');
+  console.error('1. Go to https://supabase.com/dashboard');
+  console.error('2. Select your project');
+  console.error('3. Go to Settings > API');
+  console.error('4. Copy your Project URL and anon/public key');
+  console.error('5. Update VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env');
+  
+  // Create a mock client to prevent the app from crashing
+  const mockClient = {
+    auth: {
+      signUp: () => Promise.reject(new Error('Supabase not configured')),
+      signInWithPassword: () => Promise.reject(new Error('Supabase not configured')),
+      signOut: () => Promise.reject(new Error('Supabase not configured')),
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    },
+    from: () => ({
+      select: () => Promise.reject(new Error('Supabase not configured')),
+      insert: () => Promise.reject(new Error('Supabase not configured')),
+      update: () => Promise.reject(new Error('Supabase not configured')),
+      delete: () => Promise.reject(new Error('Supabase not configured')),
+    }),
+  };
+  
+  // @ts-ignore - This is a temporary mock to prevent crashes
+  export const supabase = mockClient;
+} else {
+  export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+    }
+  });
+}
 
 export type Database = {
   public: {
