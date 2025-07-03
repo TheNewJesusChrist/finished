@@ -123,7 +123,22 @@ export const useAuth = () => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Provide more user-friendly error messages
+        let userFriendlyMessage = error.message;
+        
+        if (error.message === 'Invalid login credentials') {
+          userFriendlyMessage = 'The email or password you entered is incorrect. Please check your credentials and try again.';
+        } else if (error.message.includes('Email not confirmed')) {
+          userFriendlyMessage = 'Please check your email and confirm your account before signing in.';
+        } else if (error.message.includes('Too many requests')) {
+          userFriendlyMessage = 'Too many login attempts. Please wait a moment before trying again.';
+        }
+        
+        const enhancedError = new Error(userFriendlyMessage);
+        enhancedError.name = error.name;
+        throw enhancedError;
+      }
 
       if (data?.session?.user) {
         console.log('Login successful:', data.session.user.id);
@@ -150,7 +165,23 @@ export const useAuth = () => {
         email,
         password,
       });
-      if (error) throw error;
+      
+      if (error) {
+        // Provide more user-friendly error messages for sign up
+        let userFriendlyMessage = error.message;
+        
+        if (error.message.includes('User already registered')) {
+          userFriendlyMessage = 'An account with this email already exists. Please try signing in instead.';
+        } else if (error.message.includes('Password should be at least')) {
+          userFriendlyMessage = 'Password must be at least 6 characters long.';
+        } else if (error.message.includes('Invalid email')) {
+          userFriendlyMessage = 'Please enter a valid email address.';
+        }
+        
+        const enhancedError = new Error(userFriendlyMessage);
+        enhancedError.name = error.name;
+        throw enhancedError;
+      }
 
       if (data.user) {
         const { error: profileError } = await supabase
@@ -169,7 +200,14 @@ export const useAuth = () => {
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
-          throw profileError;
+          let userFriendlyMessage = 'Failed to create user profile. Please try again.';
+          
+          if (profileError.message.includes('duplicate key')) {
+            userFriendlyMessage = 'Account already exists. Please try signing in instead.';
+          }
+          
+          const enhancedError = new Error(userFriendlyMessage);
+          throw enhancedError;
         }
 
         console.log('Sign up + profile creation successful');

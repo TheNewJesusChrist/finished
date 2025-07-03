@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Sword, Mail, Lock, User } from 'lucide-react';
+import { Sword, Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
 
@@ -13,12 +13,14 @@ const Auth: React.FC = () => {
     name: '',
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     try {
       if (isLogin) {
@@ -35,7 +37,9 @@ const Auth: React.FC = () => {
         }
       }
     } catch (error: any) {
-      toast.error(error.message || 'Something went wrong');
+      const errorMessage = error.message || 'Something went wrong';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -45,6 +49,20 @@ const Auth: React.FC = () => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
+    });
+    // Clear error when user starts typing
+    if (error) {
+      setError(null);
+    }
+  };
+
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    setError(null);
+    setFormData({
+      email: '',
+      password: '',
+      name: '',
     });
   };
 
@@ -72,6 +90,30 @@ const Auth: React.FC = () => {
             {isLogin ? 'Continue your path to mastery' : 'Become a Jedi Master'}
           </p>
         </div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3"
+          >
+            <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-red-700">{error}</p>
+              {isLogin && error.includes('incorrect') && (
+                <p className="text-xs text-red-600 mt-1">
+                  Don't have an account?{' '}
+                  <button
+                    onClick={toggleMode}
+                    className="underline hover:no-underline"
+                  >
+                    Create one here
+                  </button>
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {!isLogin && (
@@ -131,8 +173,14 @@ const Auth: React.FC = () => {
                 className="w-full pl-10 pr-4 py-3 border border-[#CBD5E1] rounded-lg focus:ring-2 focus:ring-[#3CA7E0] focus:border-transparent outline-none transition-all duration-200"
                 placeholder="Enter your password"
                 required
+                minLength={6}
               />
             </div>
+            {!isLogin && (
+              <p className="text-xs text-[#BFC9D9] mt-1">
+                Password must be at least 6 characters long
+              </p>
+            )}
           </div>
 
           <motion.button
@@ -158,7 +206,7 @@ const Auth: React.FC = () => {
             {isLogin ? "Don't have an account?" : "Already have an account?"}
           </p>
           <button
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={toggleMode}
             className="text-sm text-[#3CA7E0] hover:text-[#5ED3F3] font-medium transition-colors duration-200"
           >
             {isLogin ? 'Create one here' : 'Sign in here'}
