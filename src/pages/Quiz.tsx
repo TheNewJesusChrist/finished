@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, XCircle, Brain, Trophy, RotateCcw, AlertCircle, RefreshCw, Loader } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Brain, Trophy, RotateCcw, AlertCircle, RefreshCw, Loader, BookOpen, Lightbulb } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { Course } from '../types';
@@ -13,6 +13,14 @@ interface QuizQuestion {
   options: string[];
   correct_answer: number;
   explanation: string;
+}
+
+interface QuizSummary {
+  question: string;
+  userAnswer: number;
+  correctAnswer: number;
+  explanation: string;
+  isCorrect: boolean;
 }
 
 const Quiz: React.FC = () => {
@@ -27,6 +35,7 @@ const Quiz: React.FC = () => {
   const [userAnswers, setUserAnswers] = useState<number[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,43 +104,67 @@ const Quiz: React.FC = () => {
           id: '1',
           question: 'What is the Force according to Jedi teachings?',
           options: [
-            'An energy field created by all living things',
+            'An energy field created by all living things that binds the galaxy together',
             'A supernatural power only some possess',
             'A technology developed by ancient civilizations',
             'A form of advanced telepathy'
           ],
           correct_answer: 0,
-          explanation: 'The Force is an energy field created by all living things that surrounds us, penetrates us, and binds the galaxy together.'
+          explanation: 'The Force is an energy field created by all living things that surrounds us, penetrates us, and binds the galaxy together. This is the fundamental understanding taught by Jedi Masters.'
         },
         {
           id: '2',
-          question: 'What is the first step in becoming Force-sensitive?',
+          question: 'What is the first step in developing Force sensitivity?',
           options: [
-            'Learning lightsaber combat',
-            'Meditation and mindfulness practice',
-            'Studying ancient Jedi texts',
-            'Building a lightsaber'
+            'Learning lightsaber combat techniques',
+            'Meditation and mindfulness practice to quiet the mind',
+            'Studying ancient Jedi texts and history',
+            'Building a lightsaber crystal'
           ],
           correct_answer: 1,
-          explanation: 'Meditation and mindfulness are fundamental to developing Force sensitivity and awareness.'
+          explanation: 'Meditation and mindfulness are fundamental to developing Force sensitivity. A quiet, focused mind is essential for perceiving and connecting with the Force.'
         },
         {
           id: '3',
           question: 'What distinguishes the light side from the dark side of the Force?',
           options: [
-            'Power level and strength',
+            'Power level and raw strength in abilities',
             'Emotional control and selflessness vs. passion and selfishness',
-            'Age and experience',
-            'Natural talent and ability'
+            'Age and years of training experience',
+            'Natural talent and inherited abilities'
           ],
           correct_answer: 1,
-          explanation: 'The light side emphasizes emotional control, selflessness, and peace, while the dark side is driven by passion, anger, and selfishness.'
+          explanation: 'The light side emphasizes emotional control, selflessness, and peace, while the dark side is driven by passion, anger, and selfishness. This philosophical difference is core to Jedi teachings.'
+        },
+        {
+          id: '4',
+          question: 'According to Jedi philosophy, what should guide a Jedi\'s actions?',
+          options: [
+            'Personal desires and individual goals',
+            'Compassion, wisdom, and service to others',
+            'Strict adherence to rules without question',
+            'The pursuit of power and recognition'
+          ],
+          correct_answer: 1,
+          explanation: 'Jedi are guided by compassion, wisdom, and a commitment to serving others and the greater good, not personal gain or power.'
+        },
+        {
+          id: '5',
+          question: 'What role does patience play in Jedi training?',
+          options: [
+            'It is unnecessary if you have natural talent',
+            'It is essential for mastering both Force abilities and emotional control',
+            'It only matters for meditation practices',
+            'It is less important than aggressive training'
+          ],
+          correct_answer: 1,
+          explanation: 'Patience is fundamental to Jedi training, essential for developing both Force abilities and the emotional control necessary to resist the dark side.'
         }
       ],
       'guest-course-2': [
         {
           id: '1',
-          question: 'How many forms of lightsaber combat are there?',
+          question: 'How many traditional forms of lightsaber combat are there?',
           options: [
             'Five forms',
             'Seven forms',
@@ -139,19 +172,31 @@ const Quiz: React.FC = () => {
             'Three forms'
           ],
           correct_answer: 1,
-          explanation: 'There are seven traditional forms of lightsaber combat, each with its own philosophy and techniques.'
+          explanation: 'There are seven traditional forms of lightsaber combat, each with its own philosophy, techniques, and tactical applications.'
         },
         {
           id: '2',
-          question: 'What is Form I (Shii-Cho) known for?',
+          question: 'What is Form I (Shii-Cho) primarily known for?',
           options: [
-            'Aggressive offense',
-            'Basic fundamentals and foundation',
-            'Defensive mastery',
-            'Dual-blade techniques'
+            'Aggressive offensive techniques',
+            'Basic fundamentals and foundation training',
+            'Defensive mastery and protection',
+            'Dual-blade combat techniques'
           ],
           correct_answer: 1,
-          explanation: 'Form I (Shii-Cho) is the foundation form that teaches basic lightsaber fundamentals and is learned by all Jedi.'
+          explanation: 'Form I (Shii-Cho) is the foundation form that teaches basic lightsaber fundamentals and is the first form learned by all Jedi students.'
+        },
+        {
+          id: '3',
+          question: 'What is the primary focus of Form III (Soresu)?',
+          options: [
+            'Overwhelming offensive power',
+            'Defensive techniques and protection',
+            'Acrobatic movements and agility',
+            'Dual-weapon combat'
+          ],
+          correct_answer: 1,
+          explanation: 'Form III (Soresu) is focused on defensive techniques, emphasizing protection and outlasting opponents through superior defense.'
         }
       ],
       'guest-course-3': [
@@ -159,25 +204,37 @@ const Quiz: React.FC = () => {
           id: '1',
           question: 'What is the primary purpose of Jedi meditation?',
           options: [
-            'To increase physical strength',
-            'To connect with the Force and find inner peace',
-            'To communicate with other Jedi',
-            'To predict the future'
+            'To increase physical strength and endurance',
+            'To connect with the Force and achieve inner peace',
+            'To communicate telepathically with other Jedi',
+            'To predict future events with certainty'
           ],
           correct_answer: 1,
-          explanation: 'Jedi meditation helps connect with the Force, find inner peace, and maintain emotional balance.'
+          explanation: 'Jedi meditation helps connect with the Force, achieve inner peace, and maintain the emotional balance necessary for a Jedi\'s path.'
         },
         {
           id: '2',
-          question: 'How often should a Jedi practice meditation?',
+          question: 'How often should a dedicated Jedi practice meditation?',
           options: [
             'Only when facing difficult decisions',
-            'Daily, as a regular practice',
-            'Once a week',
-            'Only during formal training'
+            'Daily, as a regular spiritual practice',
+            'Once a week during formal training',
+            'Only during times of crisis'
           ],
           correct_answer: 1,
-          explanation: 'Daily meditation is essential for maintaining Force connection and emotional balance.'
+          explanation: 'Daily meditation is essential for maintaining Force connection, emotional balance, and spiritual growth as a Jedi.'
+        },
+        {
+          id: '3',
+          question: 'What should a Jedi focus on during meditation?',
+          options: [
+            'Achieving specific visions or outcomes',
+            'Clearing the mind and being present in the moment',
+            'Planning future actions and strategies',
+            'Analyzing past mistakes and failures'
+          ],
+          correct_answer: 1,
+          explanation: 'Jedi meditation focuses on clearing the mind, being present, and allowing the Force to flow naturally without forcing specific outcomes.'
         }
       ]
     };
@@ -359,6 +416,7 @@ const Quiz: React.FC = () => {
     setUserAnswers([]);
     setShowResult(false);
     setQuizCompleted(false);
+    setShowSummary(false);
   };
 
   const retryLoading = () => {
@@ -375,6 +433,16 @@ const Quiz: React.FC = () => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  const generateQuizSummary = (): QuizSummary[] => {
+    return questions.map((question, index) => ({
+      question: question.question,
+      userAnswer: userAnswers[index],
+      correctAnswer: question.correct_answer,
+      explanation: question.explanation,
+      isCorrect: userAnswers[index] === question.correct_answer
+    }));
   };
 
   // Loading state
@@ -611,7 +679,10 @@ const Quiz: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-[#F5F7FA] rounded-lg p-4 mb-6"
                   >
-                    <h3 className="font-semibold text-[#2E3A59] mb-2">Explanation:</h3>
+                    <h3 className="font-semibold text-[#2E3A59] mb-2 flex items-center space-x-2">
+                      <Lightbulb className="h-4 w-4 text-[#F59E0B]" />
+                      <span>Explanation:</span>
+                    </h3>
                     <p className="text-[#BFC9D9]">{currentQuestionData.explanation}</p>
                   </motion.div>
                 )}
@@ -654,7 +725,16 @@ const Quiz: React.FC = () => {
               )}
             </div>
 
-            <div className="flex justify-center space-x-4">
+            <div className="flex justify-center space-x-4 mb-6">
+              <motion.button
+                onClick={() => setShowSummary(!showSummary)}
+                className="px-6 py-3 bg-[#8B5CF6] text-white rounded-lg font-semibold flex items-center space-x-2"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <BookOpen className="h-5 w-5" />
+                <span>{showSummary ? 'Hide' : 'Show'} Summary</span>
+              </motion.button>
               <motion.button
                 onClick={restartQuiz}
                 className="px-6 py-3 bg-[#5ED3F3] text-white rounded-lg font-semibold flex items-center space-x-2"
@@ -673,6 +753,61 @@ const Quiz: React.FC = () => {
                 Back to Courses
               </motion.button>
             </div>
+
+            {/* Quiz Summary */}
+            <AnimatePresence>
+              {showSummary && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-8 text-left"
+                >
+                  <h3 className="text-xl font-semibold text-[#2E3A59] mb-4 text-center">
+                    Quiz Summary with Explanations
+                  </h3>
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {generateQuizSummary().map((summary, index) => (
+                      <div
+                        key={index}
+                        className={`p-4 rounded-lg border-2 ${
+                          summary.isCorrect
+                            ? 'border-green-200 bg-green-50'
+                            : 'border-red-200 bg-red-50'
+                        }`}
+                      >
+                        <div className="flex items-start space-x-3 mb-2">
+                          {summary.isCorrect ? (
+                            <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <p className="font-medium text-[#2E3A59] mb-2">
+                              Question {index + 1}: {summary.question}
+                            </p>
+                            <p className={`text-sm mb-1 ${
+                              summary.isCorrect ? 'text-green-700' : 'text-red-700'
+                            }`}>
+                              Your answer: {questions[index].options[summary.userAnswer]}
+                            </p>
+                            {!summary.isCorrect && (
+                              <p className="text-sm text-green-700 mb-2">
+                                Correct answer: {questions[index].options[summary.correctAnswer]}
+                              </p>
+                            )}
+                            <p className="text-sm text-[#BFC9D9]">
+                              {summary.explanation}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </div>

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Info, Brain, CheckCircle, AlertCircle, FileText, Zap } from 'lucide-react';
+import { ArrowLeft, Sparkles, Info, Brain, CheckCircle, AlertCircle, FileText, Zap, RefreshCw } from 'lucide-react';
 import FileUpload from '../components/Upload/FileUpload';
+import QuizSettings from '../components/Upload/QuizSettings';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { DocumentParser } from '../lib/documentParser';
@@ -19,18 +20,20 @@ interface ProcessingStep {
 const Upload: React.FC = () => {
   const [courseTitle, setCourseTitle] = useState('');
   const [courseDescription, setCourseDescription] = useState('');
+  const [questionCount, setQuestionCount] = useState(5);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
   const [extractedContent, setExtractedContent] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const initializeProcessingSteps = () => {
     setProcessingSteps([
-      { id: 'upload', label: 'Uploading file to storage', status: 'processing' },
-      { id: 'parse', label: 'Extracting text from document', status: 'pending' },
-      { id: 'generate', label: 'Generating quiz questions with AI', status: 'pending' },
+      { id: 'upload', label: 'Uploading file to secure storage', status: 'processing' },
+      { id: 'parse', label: 'Analyzing document content with AI', status: 'pending' },
+      { id: 'generate', label: `Generating ${questionCount} intelligent quiz questions`, status: 'pending' },
       { id: 'save', label: 'Saving course and quiz data', status: 'pending' },
     ]);
   };
@@ -41,6 +44,13 @@ const Upload: React.FC = () => {
         step.id === stepId ? { ...step, status, details } : step
       )
     );
+  };
+
+  const retryUpload = () => {
+    setError(null);
+    setProcessingSteps([]);
+    setExtractedContent('');
+    setUploadProgress(0);
   };
 
   const handleFileUpload = async (file: File) => {
@@ -57,6 +67,7 @@ const Upload: React.FC = () => {
     setIsUploading(true);
     setUploadProgress(0);
     setExtractedContent('');
+    setError(null);
     initializeProcessingSteps();
     
     try {
@@ -81,28 +92,35 @@ const Upload: React.FC = () => {
         .from('course-files')
         .getPublicUrl(fileName);
 
-      // Step 2: Parse document content
-      updateStepStatus('parse', 'processing', 'Extracting text content...');
+      // Step 2: Parse document content with enhanced analysis
+      updateStepStatus('parse', 'processing', 'Extracting and analyzing content...');
       setUploadProgress(35);
       
       const parsedContent = await DocumentParser.parseDocument(publicUrl, file.type);
-      setExtractedContent(parsedContent.text.substring(0, 500) + '...');
       
-      updateStepStatus('parse', 'completed', `Extracted ${parsedContent.text.length} characters`);
+      // Show preview of extracted content
+      const preview = parsedContent.text.substring(0, 300) + '...';
+      setExtractedContent(preview);
+      
+      updateStepStatus('parse', 'completed', 
+        `Extracted ${parsedContent.text.length} characters, ${parsedContent.concepts.length} concepts, ${parsedContent.definitions.length} definitions`
+      );
       setUploadProgress(55);
 
-      // Step 3: Generate quiz questions using OpenRouter API
-      updateStepStatus('generate', 'processing', 'Generating quiz questions with AI...');
+      // Step 3: Generate intelligent quiz questions
+      updateStepStatus('generate', 'processing', `Creating ${questionCount} questions with smart distractors...`);
       setUploadProgress(65);
       
-      const quizQuestions = await QuizGenerator.generateQuestions(parsedContent);
+      const quizQuestions = await QuizGenerator.generateQuestions(parsedContent, questionCount);
       
       if (quizQuestions.length === 0) {
         updateStepStatus('generate', 'error', 'Failed to generate quiz questions');
-        throw new Error('No quiz questions were generated');
+        throw new Error('No quiz questions were generated. Please try a different document or contact support.');
       }
       
-      updateStepStatus('generate', 'completed', `Generated ${quizQuestions.length} questions`);
+      updateStepStatus('generate', 'completed', 
+        `Generated ${quizQuestions.length} intelligent questions with content-based distractors`
+      );
       setUploadProgress(80);
 
       // Step 4: Save course and questions to database
@@ -115,7 +133,7 @@ const Upload: React.FC = () => {
           {
             user_id: user.id,
             title: courseTitle || parsedContent.title || file.name.split('.')[0],
-            description: courseDescription || `AI-generated course from ${file.name}`,
+            description: courseDescription || `AI-generated course from ${file.name} with ${questionCount} quiz questions`,
             file_url: publicUrl,
             file_type: file.type,
             progress: 0,
@@ -150,7 +168,7 @@ const Upload: React.FC = () => {
       updateStepStatus('save', 'completed', 'Course and quiz saved successfully');
       setUploadProgress(100);
 
-      toast.success(`Course uploaded successfully with ${quizQuestions.length} AI-generated quiz questions!`);
+      toast.success(`🎉 Course uploaded successfully with ${quizQuestions.length} AI-generated quiz questions!`);
       
       setTimeout(() => {
         navigate('/courses');
@@ -165,6 +183,7 @@ const Upload: React.FC = () => {
         updateStepStatus(currentStep.id, 'error', error.message);
       }
       
+      setError(error.message || 'Upload failed');
       toast.error(error.message || 'Upload failed');
       setUploadProgress(0);
     } finally {
@@ -175,6 +194,7 @@ const Upload: React.FC = () => {
   const handleGuestUpload = async (file: File) => {
     setIsUploading(true);
     setUploadProgress(0);
+    setError(null);
     initializeProcessingSteps();
     
     // Simulate the upload process for guest users
@@ -192,16 +212,16 @@ const Upload: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, step.delay));
       
       if (step.id === 'parse') {
-        setExtractedContent('This is a demo of text extraction from your uploaded document. The actual content would be parsed and displayed here...');
-        updateStepStatus(step.id, 'completed', 'Demo text extraction completed');
+        setExtractedContent('This is a demo of intelligent content extraction from your uploaded document. The AI would analyze concepts, definitions, facts, and examples to create smart quiz questions...');
+        updateStepStatus(step.id, 'completed', 'Demo: Analyzed content structure and key concepts');
       } else if (step.id === 'generate') {
-        updateStepStatus(step.id, 'completed', 'Demo: Generated 5 AI questions');
+        updateStepStatus(step.id, 'completed', `Demo: Generated ${questionCount} AI questions with smart distractors`);
       } else {
         updateStepStatus(step.id, 'completed');
       }
     }
     
-    toast.success('Demo upload completed! Create an account to save your courses and use real AI quiz generation.');
+    toast.success('🎯 Demo upload completed! Create an account to save your courses and use real AI quiz generation.');
     
     setTimeout(() => {
       navigate('/courses');
@@ -223,7 +243,7 @@ const Upload: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
-      <div className="max-w-4xl mx-auto p-8">
+      <div className="max-w-5xl mx-auto p-8">
         <div className="mb-8">
           <motion.button
             onClick={() => navigate(-1)}
@@ -249,7 +269,7 @@ const Upload: React.FC = () => {
               )}
             </h1>
             <p className="text-[#BFC9D9] text-lg">
-              Transform your documents into interactive learning experiences with AI-powered quiz generation.
+              Transform your documents into interactive learning experiences with AI-powered quiz generation and smart content analysis.
             </p>
             
             {user?.isGuest && (
@@ -267,11 +287,13 @@ const Upload: React.FC = () => {
           </motion.div>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Course Details */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
+            className="space-y-6"
           >
             <div className="bg-white rounded-xl shadow-lg p-6 border border-[#CBD5E1]">
               <h2 className="text-xl font-semibold text-[#2E3A59] mb-4">
@@ -308,12 +330,20 @@ const Upload: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            <QuizSettings
+              questionCount={questionCount}
+              onQuestionCountChange={setQuestionCount}
+              disabled={isUploading}
+            />
           </motion.div>
 
+          {/* File Upload */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
+            className="lg:col-span-2"
           >
             <FileUpload 
               onFileUpload={handleFileUpload} 
@@ -322,6 +352,33 @@ const Upload: React.FC = () => {
             />
           </motion.div>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mt-8 bg-red-50 border border-red-200 rounded-xl p-6"
+          >
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-red-800 mb-2">Upload Failed</h3>
+                <p className="text-red-700 mb-4">{error}</p>
+                <motion.button
+                  onClick={retryUpload}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Try Again</span>
+                </motion.button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Processing Steps */}
         {processingSteps.length > 0 && (
@@ -369,7 +426,7 @@ const Upload: React.FC = () => {
           >
             <h3 className="text-lg font-semibold text-[#2E3A59] mb-4 flex items-center space-x-2">
               <FileText className="h-5 w-5 text-[#10B981]" />
-              <span>Extracted Content Preview</span>
+              <span>Content Analysis Preview</span>
             </h3>
             <div className="bg-[#F5F7FA] rounded-lg p-4 text-sm text-[#2E3A59] max-h-32 overflow-y-auto">
               {extractedContent}
@@ -386,39 +443,43 @@ const Upload: React.FC = () => {
         >
           <h3 className="text-lg font-semibold text-[#2E3A59] mb-4 flex items-center space-x-2">
             <Zap className="h-5 w-5 text-[#F59E0B]" />
-            <span>AI-Powered Quiz Generation</span>
+            <span>Intelligent Quiz Generation</span>
           </h3>
           <div className="grid md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="w-12 h-12 bg-[#3CA7E0] text-white rounded-full flex items-center justify-center mx-auto mb-2">
                 <span className="font-bold">1</span>
               </div>
-              <p className="text-sm text-[#2E3A59]">
-                Upload PDF, PowerPoint, or Word document
+              <p className="text-sm text-[#2E3A59] font-medium mb-1">Smart Upload</p>
+              <p className="text-xs text-[#BFC9D9]">
+                Upload PDF, PowerPoint, or Word documents
               </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-[#5ED3F3] text-white rounded-full flex items-center justify-center mx-auto mb-2">
                 <span className="font-bold">2</span>
               </div>
-              <p className="text-sm text-[#2E3A59]">
-                AI extracts and analyzes content
+              <p className="text-sm text-[#2E3A59] font-medium mb-1">Deep Analysis</p>
+              <p className="text-xs text-[#BFC9D9]">
+                AI extracts concepts, definitions, and key facts
               </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-[#10B981] text-white rounded-full flex items-center justify-center mx-auto mb-2">
                 <span className="font-bold">3</span>
               </div>
-              <p className="text-sm text-[#2E3A59]">
-                OpenRouter AI generates relevant quiz questions
+              <p className="text-sm text-[#2E3A59] font-medium mb-1">Smart Questions</p>
+              <p className="text-xs text-[#BFC9D9]">
+                Generate questions with intelligent distractors
               </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-[#8B5CF6] text-white rounded-full flex items-center justify-center mx-auto mb-2">
                 <span className="font-bold">4</span>
               </div>
-              <p className="text-sm text-[#2E3A59]">
-                Interactive course ready for learning
+              <p className="text-sm text-[#2E3A59] font-medium mb-1">Interactive Learning</p>
+              <p className="text-xs text-[#BFC9D9]">
+                Take quizzes with detailed explanations
               </p>
             </div>
           </div>
