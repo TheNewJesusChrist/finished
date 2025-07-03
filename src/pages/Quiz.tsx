@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, XCircle, Brain, Trophy, RotateCcw, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Brain, Trophy, RotateCcw, AlertCircle, RefreshCw, Loader } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { Course } from '../types';
@@ -186,10 +186,50 @@ const Quiz: React.FC = () => {
     setQuestions(courseQuestions);
   };
 
+  const validateQuestionData = (questionData: any): QuizQuestion | null => {
+    // Strict validation to prevent crashes
+    if (!questionData || typeof questionData !== 'object') {
+      return null;
+    }
+
+    const {
+      id,
+      question,
+      options,
+      correct_answer,
+      explanation
+    } = questionData;
+
+    // Validate all required fields
+    if (
+      !id ||
+      !question || typeof question !== 'string' ||
+      !Array.isArray(options) || options.length !== 4 ||
+      !options.every(opt => typeof opt === 'string') ||
+      typeof correct_answer !== 'number' ||
+      correct_answer < 0 || correct_answer > 3 ||
+      !explanation || typeof explanation !== 'string'
+    ) {
+      console.warn('Invalid question data:', questionData);
+      return null;
+    }
+
+    return {
+      id: String(id),
+      question: question.trim(),
+      options: options.map(opt => String(opt).trim()),
+      correct_answer,
+      explanation: explanation.trim()
+    };
+  };
+
   const fetchCourseAndQuestions = async () => {
     if (!courseId || !user || user.isGuest) return;
 
     try {
+      setLoading(true);
+      setError(null);
+
       // Fetch course
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
@@ -199,7 +239,7 @@ const Quiz: React.FC = () => {
         .single();
 
       if (courseError) {
-        throw new Error('Course not found');
+        throw new Error('Course not found or access denied');
       }
       
       setCourse(courseData);
@@ -217,42 +257,42 @@ const Quiz: React.FC = () => {
 
       if (!questionsData || questionsData.length === 0) {
         setError('No quiz questions available for this course yet. Please try re-uploading the course to generate questions.');
-        setLoading(false);
         return;
       }
 
-      // Validate and format questions
-      const validQuestions = questionsData
-        .filter(q => q.question && q.options && Array.isArray(q.options) && q.options.length === 4)
-        .map(q => ({
-          id: q.id,
-          question: q.question,
-          options: q.options,
-          correct_answer: q.correct_answer,
-          explanation: q.explanation || 'No explanation available.'
-        }));
+      // Validate and format questions with strict checking
+      const validQuestions: QuizQuestion[] = [];
+      
+      for (const questionData of questionsData) {
+        const validatedQuestion = validateQuestionData(questionData);
+        if (validatedQuestion) {
+          validQuestions.push(validatedQuestion);
+        }
+      }
 
       if (validQuestions.length === 0) {
-        setError('Quiz questions are corrupted. Please try re-uploading the course.');
-        setLoading(false);
+        setError('Quiz questions are corrupted or invalid. Please try re-uploading the course to regenerate questions.');
         return;
       }
 
+      console.log(`Loaded ${validQuestions.length} valid questions out of ${questionsData.length} total`);
       setQuestions(validQuestions);
+
     } catch (error: any) {
       console.error('Error fetching course and questions:', error);
-      setError(error.message || 'Failed to load quiz');
+      setError(error.message || 'Failed to load quiz. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleAnswerSelect = (answerIndex: number) => {
+    if (showResult) return; // Prevent selection after showing result
     setSelectedAnswer(answerIndex);
   };
 
   const handleNextQuestion = () => {
-    if (selectedAnswer === null) return;
+    if (selectedAnswer === null || !questions[currentQuestion]) return;
 
     const newAnswers = [...userAnswers, selectedAnswer];
     setUserAnswers(newAnswers);
@@ -271,9 +311,13 @@ const Quiz: React.FC = () => {
   };
 
   const updateCourseProgress = async (answers: number[]) => {
-    if (!course || !user) return;
+    if (!course || !user || questions.length === 0) return;
 
-    const correctAnswers = answers.filter((answer, index) => answer === questions[index].correct_answer).length;
+    const correctAnswers = answers.filter((answer, index) => {
+      const question = questions[index];
+      return question && answer === question.correct_answer;
+    }).length;
+    
     const progressPercentage = Math.round((correctAnswers / questions.length) * 100);
 
     if (user.isGuest) {
@@ -333,19 +377,22 @@ const Quiz: React.FC = () => {
     return 'text-red-600';
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3CA7E0] mx-auto mb-4"></div>
-            <p className="text-[#BFC9D9]">Loading quiz questions...</p>
+            <Loader className="animate-spin h-12 w-12 text-[#3CA7E0] mx-auto mb-4" />
+            <p className="text-[#BFC9D9] text-lg">Loading quiz questions...</p>
+            <p className="text-[#BFC9D9] text-sm mt-2">This may take a moment</p>
           </div>
         </div>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
@@ -362,7 +409,7 @@ const Quiz: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-lg p-8 border border-[#CBD5E1] text-center">
             <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-6" />
             <h1 className="text-2xl font-bold text-[#2E3A59] mb-4">Quiz Not Available</h1>
-            <p className="text-[#BFC9D9] mb-6">{error}</p>
+            <p className="text-[#BFC9D9] mb-6 max-w-md mx-auto">{error}</p>
             
             <div className="flex justify-center space-x-4">
               <motion.button
@@ -389,26 +436,71 @@ const Quiz: React.FC = () => {
     );
   }
 
+  // No course or questions state
   if (!course || questions.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
         <div className="max-w-4xl mx-auto p-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-[#2E3A59] mb-4">Course not found</h1>
-            <button
+          <motion.button
+            onClick={() => navigate('/courses')}
+            className="flex items-center space-x-2 text-[#3CA7E0] hover:text-[#5ED3F3] transition-colors duration-200 mb-6"
+            whileHover={{ x: -5 }}
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span>Back to Courses</span>
+          </motion.button>
+          
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-[#CBD5E1] text-center">
+            <Brain className="h-16 w-16 text-[#BFC9D9] mx-auto mb-6" />
+            <h1 className="text-2xl font-bold text-[#2E3A59] mb-4">No Quiz Available</h1>
+            <p className="text-[#BFC9D9] mb-6">
+              {course ? 'This course doesn\'t have any quiz questions yet.' : 'Course not found.'}
+            </p>
+            <motion.button
               onClick={() => navigate('/courses')}
               className="px-6 py-3 bg-[#3CA7E0] text-white rounded-lg font-semibold"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               Back to Courses
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
     );
   }
 
-  const correctAnswers = userAnswers.filter((answer, index) => answer === questions[index].correct_answer).length;
-  const scorePercentage = Math.round((correctAnswers / questions.length) * 100);
+  // Calculate score safely
+  const correctAnswers = userAnswers.filter((answer, index) => {
+    const question = questions[index];
+    return question && answer === question.correct_answer;
+  }).length;
+  
+  const scorePercentage = questions.length > 0 ? Math.round((correctAnswers / questions.length) * 100) : 0;
+
+  // Get current question safely
+  const currentQuestionData = questions[currentQuestion];
+  if (!currentQuestionData && !quizCompleted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
+        <div className="max-w-4xl mx-auto p-8">
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-[#CBD5E1] text-center">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-6" />
+            <h1 className="text-2xl font-bold text-[#2E3A59] mb-4">Question Not Found</h1>
+            <p className="text-[#BFC9D9] mb-6">The current question could not be loaded.</p>
+            <motion.button
+              onClick={() => navigate('/courses')}
+              className="px-6 py-3 bg-[#3CA7E0] text-white rounded-lg font-semibold"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Back to Courses
+            </motion.button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
@@ -464,20 +556,20 @@ const Quiz: React.FC = () => {
                 transition={{ duration: 0.3 }}
               >
                 <h2 className="text-xl font-semibold text-[#2E3A59] mb-6">
-                  {questions[currentQuestion].question}
+                  {currentQuestionData.question}
                 </h2>
 
                 <div className="space-y-3 mb-8">
-                  {questions[currentQuestion].options.map((option, index) => (
+                  {currentQuestionData.options.map((option, index) => (
                     <motion.button
                       key={index}
                       onClick={() => handleAnswerSelect(index)}
                       disabled={showResult}
                       className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
                         showResult
-                          ? index === questions[currentQuestion].correct_answer
+                          ? index === currentQuestionData.correct_answer
                             ? 'border-green-500 bg-green-50 text-green-800'
-                            : index === selectedAnswer && index !== questions[currentQuestion].correct_answer
+                            : index === selectedAnswer && index !== currentQuestionData.correct_answer
                             ? 'border-red-500 bg-red-50 text-red-800'
                             : 'border-[#CBD5E1] bg-gray-50 text-[#BFC9D9]'
                           : selectedAnswer === index
@@ -489,18 +581,18 @@ const Quiz: React.FC = () => {
                     >
                       <div className="flex items-center space-x-3">
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          showResult && index === questions[currentQuestion].correct_answer
+                          showResult && index === currentQuestionData.correct_answer
                             ? 'border-green-500 bg-green-500'
-                            : showResult && index === selectedAnswer && index !== questions[currentQuestion].correct_answer
+                            : showResult && index === selectedAnswer && index !== currentQuestionData.correct_answer
                             ? 'border-red-500 bg-red-500'
                             : selectedAnswer === index
                             ? 'border-[#3CA7E0] bg-[#3CA7E0]'
                             : 'border-[#CBD5E1]'
                         }`}>
-                          {showResult && index === questions[currentQuestion].correct_answer && (
+                          {showResult && index === currentQuestionData.correct_answer && (
                             <CheckCircle className="h-4 w-4 text-white" />
                           )}
-                          {showResult && index === selectedAnswer && index !== questions[currentQuestion].correct_answer && (
+                          {showResult && index === selectedAnswer && index !== currentQuestionData.correct_answer && (
                             <XCircle className="h-4 w-4 text-white" />
                           )}
                           {!showResult && selectedAnswer === index && (
@@ -520,7 +612,7 @@ const Quiz: React.FC = () => {
                     className="bg-[#F5F7FA] rounded-lg p-4 mb-6"
                   >
                     <h3 className="font-semibold text-[#2E3A59] mb-2">Explanation:</h3>
-                    <p className="text-[#BFC9D9]">{questions[currentQuestion].explanation}</p>
+                    <p className="text-[#BFC9D9]">{currentQuestionData.explanation}</p>
                   </motion.div>
                 )}
 

@@ -27,7 +27,8 @@ export interface QuizQuestion {
 export const generateQuiz = async (courseContent: string): Promise<QuizQuestion[]> => {
   try {
     if (!OPENROUTER_API_KEY) {
-      throw new Error('OpenRouter API key not configured');
+      console.warn('OpenRouter API key not configured, using fallback questions');
+      return generateFallbackQuestions(courseContent);
     }
 
     console.log('Generating quiz with OpenRouter API...');
@@ -40,7 +41,7 @@ export const generateQuiz = async (courseContent: string): Promise<QuizQuestion[
           content: `You are an expert educator creating quiz questions. Generate exactly 5 multiple choice questions based on the provided content. Each question should:
           1. Test understanding of key concepts from the material
           2. Have exactly 4 options (A, B, C, D)
-          3. Have exactly one correct answer
+          3. Have exactly one correct answer (index 0-3)
           4. Include a clear explanation
           
           Return ONLY valid JSON in this exact format:
@@ -77,7 +78,8 @@ export const generateQuiz = async (courseContent: string): Promise<QuizQuestion[
       const validatedQuestions = validateQuestions(questions);
       
       if (validatedQuestions.length === 0) {
-        throw new Error('No valid questions generated');
+        console.warn('No valid questions generated from OpenRouter, using fallback');
+        return generateFallbackQuestions(courseContent);
       }
       
       console.log('Successfully generated questions:', validatedQuestions);
@@ -85,23 +87,101 @@ export const generateQuiz = async (courseContent: string): Promise<QuizQuestion[
       
     } catch (parseError) {
       console.error('Error parsing OpenRouter response:', parseError);
-      throw new Error('Invalid response format from AI');
+      console.warn('Using fallback questions due to parse error');
+      return generateFallbackQuestions(courseContent);
     }
     
   } catch (error: any) {
     console.error('Error generating quiz with OpenRouter:', error);
     
     if (error.response?.status === 401) {
-      throw new Error('Invalid OpenRouter API key');
+      console.warn('Invalid OpenRouter API key, using fallback questions');
     } else if (error.response?.status === 429) {
-      throw new Error('Rate limit exceeded. Please try again later.');
+      console.warn('Rate limit exceeded, using fallback questions');
+    } else if (error.response?.status === 404) {
+      console.warn('OpenRouter endpoint not found, using fallback questions');
     } else if (error.response?.status >= 500) {
-      throw new Error('OpenRouter service temporarily unavailable');
+      console.warn('OpenRouter service unavailable, using fallback questions');
     }
     
-    throw new Error(error.message || 'Failed to generate quiz questions');
+    // Always return fallback questions instead of throwing
+    return generateFallbackQuestions(courseContent);
   }
 };
+
+function generateFallbackQuestions(courseContent: string): QuizQuestion[] {
+  // Generate basic questions based on content length and type
+  const contentLength = courseContent.length;
+  const hasNumbers = /\d+/.test(courseContent);
+  const hasDefinitions = /define|definition|means|refers to/i.test(courseContent);
+  
+  const fallbackQuestions: QuizQuestion[] = [
+    {
+      question: "Based on the uploaded content, which statement best describes the main topic?",
+      options: [
+        "The content covers fundamental concepts and principles",
+        "The content is primarily about historical events",
+        "The content focuses on mathematical calculations",
+        "The content discusses fictional narratives"
+      ],
+      correct: 0,
+      explanation: "The first option is generally applicable to most educational content."
+    },
+    {
+      question: "What is the most important aspect to remember from this material?",
+      options: [
+        "Memorizing all specific details",
+        "Understanding the core concepts and their applications",
+        "Learning the exact dates and numbers",
+        "Focusing only on the conclusion"
+      ],
+      correct: 1,
+      explanation: "Understanding core concepts is more valuable than memorization for long-term learning."
+    }
+  ];
+
+  if (hasDefinitions) {
+    fallbackQuestions.push({
+      question: "When studying definitions in this material, what approach is most effective?",
+      options: [
+        "Memorize word-for-word without understanding",
+        "Understand the meaning and context of each definition",
+        "Skip definitions and focus on examples only",
+        "Only read definitions once"
+      ],
+      correct: 1,
+      explanation: "Understanding definitions in context helps with better comprehension and retention."
+    });
+  }
+
+  if (hasNumbers) {
+    fallbackQuestions.push({
+      question: "How should numerical information in this content be approached?",
+      options: [
+        "Ignore all numbers as they're not important",
+        "Memorize every number without context",
+        "Understand what the numbers represent and their significance",
+        "Only focus on the largest numbers"
+      ],
+      correct: 2,
+      explanation: "Understanding the meaning and context of numerical data is crucial for comprehension."
+    });
+  }
+
+  fallbackQuestions.push({
+    question: "What is the best way to review this material for long-term retention?",
+    options: [
+      "Read it once and never look at it again",
+      "Review regularly and connect concepts to prior knowledge",
+      "Only review the night before a test",
+      "Focus on memorizing the first paragraph only"
+    ],
+    correct: 1,
+    explanation: "Regular review and connecting new information to existing knowledge improves retention."
+  });
+
+  return fallbackQuestions.slice(0, 5); // Return up to 5 questions
+}
 
 function cleanJsonResponse(response: string): string {
   // Remove any markdown formatting
@@ -153,7 +233,7 @@ function validateQuestions(questions: any[]): QuizQuestion[] {
 export const generateJediRankQuiz = async (): Promise<QuizQuestion[]> => {
   try {
     if (!OPENROUTER_API_KEY) {
-      throw new Error('OpenRouter API key not configured');
+      return generateFallbackJediQuestions();
     }
 
     const response = await openRouterClient.post('/chat/completions', {
@@ -175,9 +255,71 @@ export const generateJediRankQuiz = async (): Promise<QuizQuestion[]> => {
     const content = response.data.choices[0].message.content;
     const cleanedContent = cleanJsonResponse(content);
     const questions = JSON.parse(cleanedContent);
-    return validateQuestions(questions);
+    const validatedQuestions = validateQuestions(questions);
+    
+    return validatedQuestions.length > 0 ? validatedQuestions : generateFallbackJediQuestions();
   } catch (error) {
     console.error('Error generating Jedi rank quiz:', error);
-    return [];
+    return generateFallbackJediQuestions();
   }
 };
+
+function generateFallbackJediQuestions(): QuizQuestion[] {
+  return [
+    {
+      question: "How do you approach learning new skills?",
+      options: [
+        "I prefer to master one skill completely before starting another",
+        "I like to explore multiple skills simultaneously",
+        "I only learn skills that are immediately useful",
+        "I avoid learning new skills unless required"
+      ],
+      correct: 0,
+      explanation: "Focused mastery demonstrates discipline and patience, key Jedi traits."
+    },
+    {
+      question: "When faced with a difficult challenge, what is your first response?",
+      options: [
+        "Take time to meditate and consider all options",
+        "Act immediately based on instinct",
+        "Seek advice from others before proceeding",
+        "Avoid the challenge if possible"
+      ],
+      correct: 0,
+      explanation: "Mindful consideration before action shows wisdom and emotional control."
+    },
+    {
+      question: "How do you handle failure or setbacks?",
+      options: [
+        "View them as learning opportunities for growth",
+        "Get frustrated and need time to recover",
+        "Blame external circumstances",
+        "Give up and try something else"
+      ],
+      correct: 0,
+      explanation: "Seeing failure as a teacher demonstrates resilience and wisdom."
+    },
+    {
+      question: "What motivates you most in your daily activities?",
+      options: [
+        "Helping others and contributing to something greater",
+        "Personal achievement and recognition",
+        "Financial rewards and security",
+        "Avoiding conflict and maintaining comfort"
+      ],
+      correct: 0,
+      explanation: "Service to others reflects the selfless nature of the Jedi path."
+    },
+    {
+      question: "How do you maintain focus during long or tedious tasks?",
+      options: [
+        "Practice mindfulness and stay present in the moment",
+        "Set frequent breaks and rewards for myself",
+        "Listen to music or find other distractions",
+        "Rush through to finish as quickly as possible"
+      ],
+      correct: 0,
+      explanation: "Mindful presence demonstrates the mental discipline essential to Jedi training."
+    }
+  ];
+}
