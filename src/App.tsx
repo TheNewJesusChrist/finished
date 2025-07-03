@@ -11,6 +11,7 @@ import Upload from './pages/Upload';
 import Skills from './pages/Skills';
 import Courses from './pages/Courses';
 import Quiz from './pages/Quiz';
+import Progress from './pages/Progress';
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,9 @@ function AppContent() {
             } />
             <Route path="/skills" element={
               user ? <Skills /> : <Navigate to="/auth" replace />
+            } />
+            <Route path="/progress" element={
+              user ? <Progress /> : <Navigate to="/auth" replace />
             } />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

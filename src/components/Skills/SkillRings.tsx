@@ -2,13 +2,18 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
-import { Brain, Dumbbell, BookOpen, Flame } from 'lucide-react';
+import { Brain, Dumbbell, BookOpen, Flame, CheckCircle } from 'lucide-react';
 
 interface SkillRingsProps {
   meditationStreak: number;
   workoutStreak: number;
   readingStreak: number;
   onSkillComplete: (skill: string) => void;
+  todayCompleted?: {
+    meditation: boolean;
+    workout: boolean;
+    reading: boolean;
+  };
 }
 
 const SkillRings: React.FC<SkillRingsProps> = ({
@@ -16,6 +21,7 @@ const SkillRings: React.FC<SkillRingsProps> = ({
   workoutStreak,
   readingStreak,
   onSkillComplete,
+  todayCompleted = { meditation: false, workout: false, reading: false },
 }) => {
   const skills = [
     {
@@ -25,6 +31,7 @@ const SkillRings: React.FC<SkillRingsProps> = ({
       icon: Brain,
       color: '#3CA7E0',
       lightColor: '#5ED3F3',
+      completed: todayCompleted.meditation,
     },
     {
       name: 'Strength',
@@ -33,6 +40,7 @@ const SkillRings: React.FC<SkillRingsProps> = ({
       icon: Dumbbell,
       color: '#10B981',
       lightColor: '#34D399',
+      completed: todayCompleted.workout,
     },
     {
       name: 'Wisdom',
@@ -41,6 +49,7 @@ const SkillRings: React.FC<SkillRingsProps> = ({
       icon: BookOpen,
       color: '#8B5CF6',
       lightColor: '#A78BFA',
+      completed: todayCompleted.reading,
     },
   ];
 
@@ -80,9 +89,14 @@ const SkillRings: React.FC<SkillRingsProps> = ({
                 className="absolute inset-0 flex items-center justify-center"
                 whileHover={{ scale: 1.1 }}
               >
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center`}
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center relative`}
                      style={{ backgroundColor: skill.lightColor + '20' }}>
                   <skill.icon className="h-6 w-6" style={{ color: skill.color }} />
+                  {skill.completed && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-3 w-3 text-white" />
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>
@@ -92,22 +106,45 @@ const SkillRings: React.FC<SkillRingsProps> = ({
 
             <motion.button
               onClick={() => onSkillComplete(skill.type)}
-              className="w-full py-2 px-3 rounded-lg text-xs font-medium transition-all duration-200"
-              style={{ 
+              disabled={skill.completed}
+              className={`w-full py-2 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${
+                skill.completed
+                  ? 'bg-green-100 text-green-600 border border-green-200 cursor-not-allowed'
+                  : 'hover:scale-105'
+              }`}
+              style={!skill.completed ? { 
                 backgroundColor: skill.color + '10',
                 color: skill.color,
                 border: `1px solid ${skill.color}30`
-              }}
-              whileHover={{ 
+              } : {}}
+              whileHover={!skill.completed ? { 
                 scale: 1.05,
                 boxShadow: `0 0 10px ${skill.lightColor}50`
-              }}
-              whileTap={{ scale: 0.95 }}
+              } : {}}
+              whileTap={!skill.completed ? { scale: 0.95 } : {}}
             >
-              Complete Today
+              {skill.completed ? 'Completed Today' : 'Complete Today'}
             </motion.button>
           </motion.div>
         ))}
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-[#CBD5E1]">
+        <div className="text-center">
+          <p className="text-sm text-[#BFC9D9] mb-2">
+            Complete all three skills daily to maximize your Force connection
+          </p>
+          <div className="flex justify-center space-x-2">
+            {skills.map((skill) => (
+              <div
+                key={skill.type}
+                className={`w-2 h-2 rounded-full ${
+                  skill.completed ? 'bg-green-500' : 'bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

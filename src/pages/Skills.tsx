@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Info } from 'lucide-react';
+import { Info, Calendar, TrendingUp, Award } from 'lucide-react';
 import SkillRings from '../components/Skills/SkillRings';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -18,6 +18,11 @@ const Skills: React.FC = () => {
     workout: false,
     reading: false,
   });
+  const [weeklyStats, setWeeklyStats] = useState({
+    thisWeek: 0,
+    lastWeek: 0,
+    totalThisMonth: 0,
+  });
 
   useEffect(() => {
     if (user) {
@@ -26,6 +31,7 @@ const Skills: React.FC = () => {
       } else {
         fetchSkillStats();
         checkTodayCompletion();
+        fetchWeeklyStats();
       }
     }
   }, [user]);
@@ -42,6 +48,12 @@ const Skills: React.FC = () => {
       meditation: true,
       workout: false,
       reading: true,
+    });
+
+    setWeeklyStats({
+      thisWeek: 12,
+      lastWeek: 8,
+      totalThisMonth: 45,
     });
   };
 
@@ -69,15 +81,21 @@ const Skills: React.FC = () => {
         const skillData = data.filter(d => d.skill_type === skill);
         let currentStreak = 0;
         let currentDate = new Date();
+        currentDate.setHours(0, 0, 0, 0);
         
         for (let i = 0; i < skillData.length; i++) {
           const skillDate = new Date(skillData[i].date);
-          const diffTime = Math.abs(currentDate.getTime() - skillDate.getTime());
+          skillDate.setHours(0, 0, 0, 0);
+          
+          const diffTime = currentDate.getTime() - skillDate.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           
-          if (diffDays <= 1) {
+          if (diffDays === currentStreak) {
             currentStreak++;
-            currentDate = skillDate;
+            currentDate.setDate(currentDate.getDate() - 1);
+          } else if (diffDays === currentStreak + 1) {
+            // Allow for today not being completed yet
+            currentDate.setDate(currentDate.getDate() - 1);
           } else {
             break;
           }
@@ -120,6 +138,44 @@ const Skills: React.FC = () => {
       setTodayCompleted(completed);
     } catch (error) {
       console.error('Error checking today completion:', error);
+    }
+  };
+
+  const fetchWeeklyStats = async () => {
+    if (!user || user.isGuest) return;
+
+    try {
+      const today = new Date();
+      const thisWeekStart = new Date(today.setDate(today.getDate() - today.getDay()));
+      const lastWeekStart = new Date(thisWeekStart);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+      const { data, error } = await supabase
+        .from('daily_skills')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('completed', true)
+        .gte('date', monthStart.toISOString().split('T')[0]);
+
+      if (error) throw error;
+
+      const thisWeekCount = data.filter(skill => 
+        new Date(skill.date) >= thisWeekStart
+      ).length;
+
+      const lastWeekCount = data.filter(skill => {
+        const skillDate = new Date(skill.date);
+        return skillDate >= lastWeekStart && skillDate < thisWeekStart;
+      }).length;
+
+      setWeeklyStats({
+        thisWeek: thisWeekCount,
+        lastWeek: lastWeekCount,
+        totalThisMonth: data.length,
+      });
+    } catch (error) {
+      console.error('Error fetching weekly stats:', error);
     }
   };
 
@@ -166,10 +222,23 @@ const Skills: React.FC = () => {
         [skillType]: true,
       }));
 
+      // Update user points
+      const pointsEarned = 10;
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          total_points: user.total_points + pointsEarned,
+          last_activity: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
       // Refresh skill stats
       fetchSkillStats();
+      fetchWeeklyStats();
       
-      toast.success(`${skillType.charAt(0).toUpperCase() + skillType.slice(1)} completed! The Force grows stronger.`);
+      toast.success(`${skillType.charAt(0).toUpperCase() + skillType.slice(1)} completed! +${pointsEarned} Force points earned.`);
     } catch (error) {
       console.error('Error completing skill:', error);
       toast.error('Failed to complete skill');
@@ -179,6 +248,11 @@ const Skills: React.FC = () => {
   if (!user) {
     return <div>Please sign in to view your skills.</div>;
   }
+
+  const completedToday = Object.values(todayCompleted).filter(Boolean).length;
+  const weeklyGrowth = weeklyStats.lastWeek > 0 
+    ? ((weeklyStats.thisWeek - weeklyStats.lastWeek) / weeklyStats.lastWeek) * 100 
+    : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
@@ -220,6 +294,7 @@ const Skills: React.FC = () => {
               meditationStreak={skillStats.meditation}
               workoutStreak={skillStats.workout}
               readingStreak={skillStats.reading}
+              todayCompleted={todayCompleted}
               onSkillComplete={handleSkillComplete}
             />
           </div>
@@ -230,9 +305,11 @@ const Skills: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="space-y-6"
           >
+            {/* Today's Progress */}
             <div className="bg-white rounded-xl shadow-lg p-6 border border-[#CBD5E1]">
-              <h3 className="text-lg font-semibold text-[#2E3A59] mb-4">
-                Today's Progress
+              <h3 className="text-lg font-semibold text-[#2E3A59] mb-4 flex items-center space-x-2">
+                <Calendar className="h-5 w-5 text-[#3CA7E0]" />
+                <span>Today's Progress</span>
               </h3>
               <div className="space-y-3">
                 {Object.entries(todayCompleted).map(([skill, completed]) => (
@@ -244,8 +321,66 @@ const Skills: React.FC = () => {
                   </div>
                 ))}
               </div>
+              <div className="mt-4 pt-4 border-t border-[#CBD5E1]">
+                <p className="text-sm text-[#BFC9D9]">
+                  Completed: {completedToday}/3 skills today
+                </p>
+                <div className="w-full bg-[#F3F4F6] rounded-full h-2 mt-2">
+                  <div 
+                    className="bg-[#3CA7E0] h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${(completedToday / 3) * 100}%` }}
+                  />
+                </div>
+              </div>
             </div>
 
+            {/* Weekly Stats */}
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-[#CBD5E1]">
+              <h3 className="text-lg font-semibold text-[#2E3A59] mb-4 flex items-center space-x-2">
+                <TrendingUp className="h-5 w-5 text-[#10B981]" />
+                <span>Weekly Stats</span>
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-[#BFC9D9]">This Week</span>
+                  <span className="text-sm font-semibold text-[#2E3A59]">{weeklyStats.thisWeek}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-[#BFC9D9]">Last Week</span>
+                  <span className="text-sm font-semibold text-[#2E3A59]">{weeklyStats.lastWeek}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-[#BFC9D9]">This Month</span>
+                  <span className="text-sm font-semibold text-[#2E3A59]">{weeklyStats.totalThisMonth}</span>
+                </div>
+                {weeklyGrowth !== 0 && (
+                  <div className="pt-2 border-t border-[#CBD5E1]">
+                    <p className={`text-xs ${weeklyGrowth > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {weeklyGrowth > 0 ? '↗' : '↘'} {Math.abs(weeklyGrowth).toFixed(1)}% vs last week
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Achievement */}
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-[#CBD5E1]">
+              <h3 className="text-lg font-semibold text-[#2E3A59] mb-4 flex items-center space-x-2">
+                <Award className="h-5 w-5 text-[#F59E0B]" />
+                <span>Next Milestone</span>
+              </h3>
+              <div className="text-center">
+                <p className="text-sm text-[#BFC9D9] mb-2">
+                  Complete 7 days in a row to unlock
+                </p>
+                <p className="text-lg font-semibold text-[#F59E0B]">Week Warrior</p>
+                <p className="text-xs text-[#BFC9D9] mt-1">
+                  Current best: {Math.max(skillStats.meditation, skillStats.workout, skillStats.reading)} days
+                </p>
+              </div>
+            </div>
+
+            {/* Jedi Wisdom */}
             <div className="bg-white rounded-xl shadow-lg p-6 border border-[#CBD5E1]">
               <h3 className="text-lg font-semibold text-[#2E3A59] mb-4">
                 Jedi Wisdom
