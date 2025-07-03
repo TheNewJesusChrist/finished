@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, XCircle, Brain, Trophy, RotateCcw, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Brain, Trophy, RotateCcw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { QuizQuestion } from '../lib/openrouter';
@@ -22,7 +22,6 @@ const Quiz: React.FC = () => {
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
-  const [quizError, setQuizError] = useState<string | null>(null);
 
   useEffect(() => {
     if (courseId && user) {
@@ -77,8 +76,8 @@ const Quiz: React.FC = () => {
       setCourse(foundCourse);
       generateQuizQuestions(foundCourse);
     } else {
-      setQuizError('Course not found');
-      setLoading(false);
+      toast.error('Course not found');
+      navigate('/courses');
     }
   };
 
@@ -91,25 +90,19 @@ const Quiz: React.FC = () => {
         .select('*')
         .eq('id', courseId)
         .eq('user_id', user.id)
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error('Error fetching course:', error);
         throw error;
       }
       
-      if (!data) {
-        setQuizError('Course not found');
-        setLoading(false);
-        return;
-      }
-      
       setCourse(data);
       await generateQuizQuestions(data);
     } catch (error) {
       console.error('Error fetching course:', error);
-      setQuizError('Failed to load course');
-      setLoading(false);
+      toast.error('Failed to load course');
+      navigate('/courses');
     }
   };
 
@@ -374,7 +367,8 @@ const Quiz: React.FC = () => {
       setQuestions(validQuestions);
     } catch (error) {
       console.error('Error generating quiz:', error);
-      setQuizError('Failed to generate quiz questions');
+      toast.error('Failed to generate quiz questions');
+      navigate('/courses');
     } finally {
       setGeneratingQuiz(false);
       setLoading(false);
@@ -478,30 +472,12 @@ const Quiz: React.FC = () => {
     );
   }
 
-  if (quizError || !course || questions.length === 0) {
+  if (!course || questions.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
         <div className="max-w-4xl mx-auto p-8">
-          <motion.button
-            onClick={() => navigate('/courses')}
-            className="flex items-center space-x-2 text-[#3CA7E0] hover:text-[#5ED3F3] transition-colors duration-200 mb-6"
-            whileHover={{ x: -5 }}
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span>Back to Courses</span>
-          </motion.button>
-          
-          <div className="text-center bg-white rounded-2xl shadow-lg p-8 border border-[#CBD5E1]">
-            <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-[#2E3A59] mb-4">
-              {quizError || 'Quiz not available'}
-            </h1>
-            <p className="text-[#BFC9D9] mb-6">
-              {quizError === 'Course not found' 
-                ? 'The course you\'re looking for could not be found.'
-                : 'Unable to load quiz questions at this time. Please try again later.'
-              }
-            </p>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-[#2E3A59] mb-4">Course not found</h1>
             <button
               onClick={() => navigate('/courses')}
               className="px-6 py-3 bg-[#3CA7E0] text-white rounded-lg font-semibold"

@@ -99,25 +99,22 @@ export const useAuth = () => {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error('Error fetching user profile:', error);
-        setUser(null);
-        setLoading(false);
-        return;
-      }
 
-      if (!data) {
-        console.log('Profile not found for user:', userId);
-        
-        // If this is during a SIGNED_IN event, don't immediately set user to null
-        // as the profile might be created by the signUp function
-        if (authEvent === 'SIGNED_IN') {
-          console.log('Profile not found during SIGNED_IN event, waiting for profile creation...');
-          return;
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, user needs to complete registration');
+          
+          // If this is during a SIGNED_IN event, don't immediately set user to null
+          // as the profile might be created by the signUp function
+          if (authEvent === 'SIGNED_IN') {
+            console.log('Profile not found during SIGNED_IN event, waiting for profile creation...');
+            return;
+          }
         }
-        
+
         setUser(null);
         setLoading(false);
         return;
