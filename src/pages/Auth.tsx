@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Sword, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { Sword, Mail, Lock, User, AlertCircle, UserCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
 
@@ -14,7 +14,7 @@ const Auth: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, continueAsGuest } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,6 +40,21 @@ const Auth: React.FC = () => {
       const errorMessage = error.message || 'Something went wrong';
       setError(errorMessage);
       toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGuestAccess = () => {
+    setLoading(true);
+    try {
+      const result = continueAsGuest();
+      if (result.success) {
+        toast.success('Welcome, Guest Jedi! Explore the Force...');
+        navigate('/courses');
+      }
+    } catch (error: any) {
+      toast.error('Failed to continue as guest');
     } finally {
       setLoading(false);
     }
@@ -200,6 +215,33 @@ const Auth: React.FC = () => {
             )}
           </motion.button>
         </form>
+
+        {/* Guest Access Button */}
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#CBD5E1]"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-[#BFC9D9]">or</span>
+            </div>
+          </div>
+          
+          <motion.button
+            onClick={handleGuestAccess}
+            disabled={loading}
+            className="w-full mt-4 py-3 bg-[#5ED3F3] text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            whileHover={{ scale: loading ? 1 : 1.02 }}
+            whileTap={{ scale: loading ? 1 : 0.98 }}
+          >
+            <UserCheck className="h-5 w-5" />
+            <span>Continue as Guest</span>
+          </motion.button>
+          
+          <p className="text-xs text-[#BFC9D9] text-center mt-2">
+            Explore all features without creating an account
+          </p>
+        </div>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-[#BFC9D9]">

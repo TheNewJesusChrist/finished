@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles, Info } from 'lucide-react';
 import FileUpload from '../components/Upload/FileUpload';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -18,6 +18,35 @@ const Upload: React.FC = () => {
   const handleFileUpload = async (file: File) => {
     if (!user) {
       toast.error('Please sign in to upload files');
+      return;
+    }
+
+    if (user.isGuest) {
+      // Demo upload for guest users
+      setIsUploading(true);
+      setUploadProgress(0);
+      
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(progressInterval);
+            return 100;
+          }
+          return prev + 20;
+        });
+      }, 300);
+
+      setTimeout(() => {
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+        toast.success('Demo upload completed! Create an account to save your courses.');
+        
+        setTimeout(() => {
+          navigate('/courses');
+        }, 1000);
+      }, 2000);
+      
       return;
     }
 
@@ -117,10 +146,28 @@ const Upload: React.FC = () => {
             <h1 className="text-3xl font-bold text-[#2E3A59] mb-4 flex items-center space-x-3">
               <Sparkles className="h-8 w-8 text-[#3CA7E0]" />
               <span>Upload Learning Material</span>
+              {user?.isGuest && (
+                <span className="text-sm bg-[#5ED3F3] text-white px-3 py-1 rounded-full">
+                  Demo Mode
+                </span>
+              )}
             </h1>
             <p className="text-[#BFC9D9] text-lg">
               Transform your documents into interactive learning experiences with AI-powered quizzes.
             </p>
+            
+            {user?.isGuest && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start space-x-3">
+                <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-blue-700 font-medium">Demo Upload Mode</p>
+                  <p className="text-sm text-blue-600 mt-1">
+                    You can try the upload process, but files won't be permanently saved. 
+                    Create an account to save your courses and track progress.
+                  </p>
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
 

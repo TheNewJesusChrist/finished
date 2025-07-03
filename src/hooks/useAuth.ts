@@ -223,9 +223,40 @@ export const useAuth = () => {
     }
   };
 
+  const continueAsGuest = () => {
+    console.log('Continuing as guest...');
+    const guestUser: User = {
+      id: 'guest-user',
+      email: 'guest@example.com',
+      name: 'Guest Jedi',
+      jedi_rank: 'Padawan',
+      total_points: 150,
+      streak_days: 3,
+      last_activity: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      isGuest: true,
+    };
+    
+    setUser(guestUser);
+    setLoading(false);
+    return { success: true };
+  };
+
   const signOut = async () => {
     try {
       console.log('Signing out...');
+      
+      // If it's a guest user, just clear the state
+      if (user?.isGuest) {
+        setUser(null);
+        setLoading(false);
+        console.log('Guest sign out successful');
+        window.location.href = '/auth';
+        return;
+      }
+      
+      // For regular users, sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
@@ -247,5 +278,6 @@ export const useAuth = () => {
     signIn,
     signUp,
     signOut,
+    continueAsGuest,
   };
 };

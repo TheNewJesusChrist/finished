@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Play, Trash2, Upload, FileText, Presentation, Calendar, BarChart3 } from 'lucide-react';
+import { BookOpen, Play, Trash2, Upload, FileText, Presentation, Calendar, BarChart3, Info } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { Course } from '../types';
@@ -15,12 +15,58 @@ const Courses: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      fetchCourses();
+      if (user.isGuest) {
+        loadGuestCourses();
+      } else {
+        fetchCourses();
+      }
     }
   }, [user]);
 
+  const loadGuestCourses = () => {
+    // Mock courses for guest users
+    const guestCourses: Course[] = [
+      {
+        id: 'guest-course-1',
+        user_id: 'guest-user',
+        title: 'Introduction to the Force',
+        description: 'Learn the fundamentals of Force sensitivity and basic Jedi principles.',
+        file_url: 'https://example.com/force-intro.pdf',
+        file_type: 'application/pdf',
+        progress: 75,
+        created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'guest-course-2',
+        user_id: 'guest-user',
+        title: 'Lightsaber Combat Basics',
+        description: 'Master the seven forms of lightsaber combat and defensive techniques.',
+        file_url: 'https://example.com/lightsaber-combat.pptx',
+        file_type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        progress: 45,
+        created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: 'guest-course-3',
+        user_id: 'guest-user',
+        title: 'Meditation and Mindfulness',
+        description: 'Develop your connection to the Force through meditation practices.',
+        file_url: 'https://example.com/meditation.pdf',
+        file_type: 'application/pdf',
+        progress: 20,
+        created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ];
+    
+    setCourses(guestCourses);
+    setLoading(false);
+  };
+
   const fetchCourses = async () => {
-    if (!user) return;
+    if (!user || user.isGuest) return;
 
     try {
       const { data, error } = await supabase
@@ -40,6 +86,13 @@ const Courses: React.FC = () => {
   };
 
   const deleteCourse = async (courseId: string) => {
+    if (user?.isGuest) {
+      // For guest users, just remove from local state
+      setCourses(courses.filter(course => course.id !== courseId));
+      toast.success('Course removed (guest mode)');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('courses')
@@ -101,10 +154,23 @@ const Courses: React.FC = () => {
               <h1 className="text-3xl font-bold text-[#2E3A59] mb-4 flex items-center space-x-3">
                 <BookOpen className="h-8 w-8 text-[#3CA7E0]" />
                 <span>My Courses</span>
+                {user?.isGuest && (
+                  <span className="text-sm bg-[#5ED3F3] text-white px-3 py-1 rounded-full">
+                    Guest Mode
+                  </span>
+                )}
               </h1>
               <p className="text-[#BFC9D9] text-lg">
                 Your journey to mastery through AI-powered learning
               </p>
+              {user?.isGuest && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start space-x-2">
+                  <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-blue-700">
+                    You're exploring in guest mode. Create an account to save your progress and upload your own courses.
+                  </p>
+                </div>
+              )}
             </div>
             <Link to="/upload">
               <motion.button
@@ -113,7 +179,7 @@ const Courses: React.FC = () => {
                 whileTap={{ scale: 0.95 }}
               >
                 <Upload className="h-5 w-5" />
-                <span>Upload New Course</span>
+                <span>{user?.isGuest ? 'Try Upload (Demo)' : 'Upload New Course'}</span>
               </motion.button>
             </Link>
           </div>
@@ -132,7 +198,10 @@ const Courses: React.FC = () => {
                 No courses yet
               </h3>
               <p className="text-[#BFC9D9] mb-6">
-                Upload your first PDF or PowerPoint to begin your Jedi training
+                {user?.isGuest 
+                  ? 'This is what your courses would look like. Try the demo upload feature!'
+                  : 'Upload your first PDF or PowerPoint to begin your Jedi training'
+                }
               </p>
               <Link to="/upload">
                 <motion.button
@@ -140,7 +209,7 @@ const Courses: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  Upload Course
+                  {user?.isGuest ? 'Try Demo Upload' : 'Upload Course'}
                 </motion.button>
               </Link>
             </div>

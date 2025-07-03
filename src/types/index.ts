@@ -8,6 +8,7 @@ export interface User {
   last_activity: string;
   created_at: string;
   updated_at: string;
+  isGuest?: boolean;
 }
 
 export type JediRank = 'Youngling' | 'Padawan' | 'Knight' | 'Master';

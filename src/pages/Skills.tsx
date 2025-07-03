@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Info } from 'lucide-react';
 import SkillRings from '../components/Skills/SkillRings';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -20,13 +21,32 @@ const Skills: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      fetchSkillStats();
-      checkTodayCompletion();
+      if (user.isGuest) {
+        loadGuestSkillData();
+      } else {
+        fetchSkillStats();
+        checkTodayCompletion();
+      }
     }
   }, [user]);
 
+  const loadGuestSkillData = () => {
+    // Mock data for guest users
+    setSkillStats({
+      meditation: 3,
+      workout: 5,
+      reading: 2,
+    });
+    
+    setTodayCompleted({
+      meditation: true,
+      workout: false,
+      reading: true,
+    });
+  };
+
   const fetchSkillStats = async () => {
-    if (!user) return;
+    if (!user || user.isGuest) return;
 
     try {
       const { data, error } = await supabase
@@ -73,7 +93,7 @@ const Skills: React.FC = () => {
   };
 
   const checkTodayCompletion = async () => {
-    if (!user) return;
+    if (!user || user.isGuest) return;
 
     const today = new Date().toISOString().split('T')[0];
     
@@ -105,6 +125,22 @@ const Skills: React.FC = () => {
 
   const handleSkillComplete = async (skillType: string) => {
     if (!user) return;
+
+    if (user.isGuest) {
+      // For guest users, just update local state
+      setTodayCompleted(prev => ({
+        ...prev,
+        [skillType]: true,
+      }));
+      
+      setSkillStats(prev => ({
+        ...prev,
+        [skillType]: prev[skillType as keyof typeof prev] + 1,
+      }));
+      
+      toast.success(`${skillType.charAt(0).toUpperCase() + skillType.slice(1)} completed! (Demo mode - create an account to save progress)`);
+      return;
+    }
 
     const today = new Date().toISOString().split('T')[0];
     
@@ -153,12 +189,29 @@ const Skills: React.FC = () => {
           transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-[#2E3A59] mb-4">
-            Daily Jedi Skills
+          <h1 className="text-3xl font-bold text-[#2E3A59] mb-4 flex items-center space-x-3">
+            <span>Daily Jedi Skills</span>
+            {user.isGuest && (
+              <span className="text-sm bg-[#5ED3F3] text-white px-3 py-1 rounded-full">
+                Demo Mode
+              </span>
+            )}
           </h1>
           <p className="text-[#BFC9D9] text-lg">
             Master your daily habits and strengthen your connection to the Force.
           </p>
+          
+          {user.isGuest && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start space-x-3">
+              <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-blue-700 font-medium">Demo Skills Tracking</p>
+                <p className="text-sm text-blue-600 mt-1">
+                  You're viewing demo skill data. Create an account to track your real progress and build lasting habits.
+                </p>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-8">
