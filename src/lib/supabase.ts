@@ -19,6 +19,8 @@ const hasValidConfig = supabaseUrl &&
                       supabaseAnonKey !== 'your_supabase_anon_key' &&
                       isValidUrl(supabaseUrl);
 
+let _supabase: any;
+
 if (!hasValidConfig) {
   console.error('❌ Supabase configuration error:');
   console.error('Please update your .env file with valid Supabase credentials:');
@@ -45,10 +47,9 @@ if (!hasValidConfig) {
     }),
   };
   
-  // @ts-ignore - This is a temporary mock to prevent crashes
-  export const supabase = mockClient;
+  _supabase = mockClient;
 } else {
-  export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  _supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
@@ -56,6 +57,8 @@ if (!hasValidConfig) {
     }
   });
 }
+
+export const supabase = _supabase;
 
 export type Database = {
   public: {
