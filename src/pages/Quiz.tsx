@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, XCircle, Brain, Trophy, RotateCcw } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Brain, Trophy, RotateCcw, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
-import { QuizQuestion } from '../lib/openrouter';
 import { Course } from '../types';
 import toast from 'react-hot-toast';
+
+interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correct_answer: number;
+  explanation: string;
+}
 
 const Quiz: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
@@ -21,14 +28,14 @@ const Quiz: React.FC = () => {
   const [showResult, setShowResult] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [generatingQuiz, setGeneratingQuiz] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (courseId && user) {
       if (user.isGuest) {
         loadGuestCourse();
       } else {
-        fetchCourse();
+        fetchCourseAndQuestions();
       }
     }
   }, [courseId, user]);
@@ -74,281 +81,168 @@ const Quiz: React.FC = () => {
     const foundCourse = guestCourses.find(c => c.id === courseId);
     if (foundCourse) {
       setCourse(foundCourse);
-      generateQuizQuestions(foundCourse);
+      loadGuestQuestions(foundCourse);
     } else {
-      toast.error('Course not found');
-      navigate('/courses');
+      setError('Course not found');
     }
+    setLoading(false);
   };
 
-  const fetchCourse = async () => {
+  const loadGuestQuestions = (courseData: Course) => {
+    const guestQuestions: Record<string, QuizQuestion[]> = {
+      'guest-course-1': [
+        {
+          id: '1',
+          question: 'What is the Force according to Jedi teachings?',
+          options: [
+            'An energy field created by all living things',
+            'A supernatural power only some possess',
+            'A technology developed by ancient civilizations',
+            'A form of advanced telepathy'
+          ],
+          correct_answer: 0,
+          explanation: 'The Force is an energy field created by all living things that surrounds us, penetrates us, and binds the galaxy together.'
+        },
+        {
+          id: '2',
+          question: 'What is the first step in becoming Force-sensitive?',
+          options: [
+            'Learning lightsaber combat',
+            'Meditation and mindfulness practice',
+            'Studying ancient Jedi texts',
+            'Building a lightsaber'
+          ],
+          correct_answer: 1,
+          explanation: 'Meditation and mindfulness are fundamental to developing Force sensitivity and awareness.'
+        },
+        {
+          id: '3',
+          question: 'What distinguishes the light side from the dark side of the Force?',
+          options: [
+            'Power level and strength',
+            'Emotional control and selflessness vs. passion and selfishness',
+            'Age and experience',
+            'Natural talent and ability'
+          ],
+          correct_answer: 1,
+          explanation: 'The light side emphasizes emotional control, selflessness, and peace, while the dark side is driven by passion, anger, and selfishness.'
+        }
+      ],
+      'guest-course-2': [
+        {
+          id: '1',
+          question: 'How many forms of lightsaber combat are there?',
+          options: [
+            'Five forms',
+            'Seven forms',
+            'Ten forms',
+            'Three forms'
+          ],
+          correct_answer: 1,
+          explanation: 'There are seven traditional forms of lightsaber combat, each with its own philosophy and techniques.'
+        },
+        {
+          id: '2',
+          question: 'What is Form I (Shii-Cho) known for?',
+          options: [
+            'Aggressive offense',
+            'Basic fundamentals and foundation',
+            'Defensive mastery',
+            'Dual-blade techniques'
+          ],
+          correct_answer: 1,
+          explanation: 'Form I (Shii-Cho) is the foundation form that teaches basic lightsaber fundamentals and is learned by all Jedi.'
+        }
+      ],
+      'guest-course-3': [
+        {
+          id: '1',
+          question: 'What is the primary purpose of Jedi meditation?',
+          options: [
+            'To increase physical strength',
+            'To connect with the Force and find inner peace',
+            'To communicate with other Jedi',
+            'To predict the future'
+          ],
+          correct_answer: 1,
+          explanation: 'Jedi meditation helps connect with the Force, find inner peace, and maintain emotional balance.'
+        },
+        {
+          id: '2',
+          question: 'How often should a Jedi practice meditation?',
+          options: [
+            'Only when facing difficult decisions',
+            'Daily, as a regular practice',
+            'Once a week',
+            'Only during formal training'
+          ],
+          correct_answer: 1,
+          explanation: 'Daily meditation is essential for maintaining Force connection and emotional balance.'
+        }
+      ]
+    };
+
+    const courseQuestions = guestQuestions[courseData.id] || [];
+    setQuestions(courseQuestions);
+  };
+
+  const fetchCourseAndQuestions = async () => {
     if (!courseId || !user || user.isGuest) return;
 
     try {
-      const { data, error } = await supabase
+      // Fetch course
+      const { data: courseData, error: courseError } = await supabase
         .from('courses')
         .select('*')
         .eq('id', courseId)
         .eq('user_id', user.id)
         .single();
 
-      if (error) {
-        console.error('Error fetching course:', error);
-        throw error;
+      if (courseError) {
+        throw new Error('Course not found');
       }
       
-      setCourse(data);
-      await generateQuizQuestions(data);
-    } catch (error) {
-      console.error('Error fetching course:', error);
-      toast.error('Failed to load course');
-      navigate('/courses');
-    }
-  };
+      setCourse(courseData);
 
-  const generateQuizQuestions = async (courseData: Course) => {
-    setGeneratingQuiz(true);
-    try {
-      // Generate questions based on course content
-      const courseSpecificQuestions: Record<string, QuizQuestion[]> = {
-        'guest-course-1': [
-          {
-            question: 'What is the Force according to Jedi teachings?',
-            options: [
-              'An energy field created by all living things',
-              'A supernatural power only some possess',
-              'A technology developed by ancient civilizations',
-              'A form of advanced telepathy'
-            ],
-            correct: 0,
-            explanation: 'The Force is an energy field created by all living things that surrounds us, penetrates us, and binds the galaxy together.'
-          },
-          {
-            question: 'What is the first step in becoming Force-sensitive?',
-            options: [
-              'Learning lightsaber combat',
-              'Meditation and mindfulness practice',
-              'Studying ancient Jedi texts',
-              'Building a lightsaber'
-            ],
-            correct: 1,
-            explanation: 'Meditation and mindfulness are fundamental to developing Force sensitivity and awareness.'
-          },
-          {
-            question: 'What distinguishes the light side from the dark side of the Force?',
-            options: [
-              'Power level and strength',
-              'Emotional control and selflessness vs. passion and selfishness',
-              'Age and experience',
-              'Natural talent and ability'
-            ],
-            correct: 1,
-            explanation: 'The light side emphasizes emotional control, selflessness, and peace, while the dark side is driven by passion, anger, and selfishness.'
-          },
-          {
-            question: 'What is the Jedi Code\'s primary teaching?',
-            options: [
-              'Power through strength',
-              'Peace through understanding and balance',
-              'Victory at any cost',
-              'Knowledge through conquest'
-            ],
-            correct: 1,
-            explanation: 'The Jedi Code emphasizes peace, knowledge, serenity, and harmony through understanding and balance.'
-          },
-          {
-            question: 'How should a Jedi approach conflict?',
-            options: [
-              'With overwhelming force',
-              'By avoiding it completely',
-              'As a last resort, seeking peaceful solutions first',
-              'By eliminating all opposition'
-            ],
-            correct: 2,
-            explanation: 'Jedi seek peaceful solutions first and use force only as a last resort to protect others and maintain peace.'
-          }
-        ],
-        'guest-course-2': [
-          {
-            question: 'How many forms of lightsaber combat are there?',
-            options: [
-              'Five forms',
-              'Seven forms',
-              'Ten forms',
-              'Three forms'
-            ],
-            correct: 1,
-            explanation: 'There are seven traditional forms of lightsaber combat, each with its own philosophy and techniques.'
-          },
-          {
-            question: 'What is Form I (Shii-Cho) known for?',
-            options: [
-              'Aggressive offense',
-              'Basic fundamentals and foundation',
-              'Defensive mastery',
-              'Dual-blade techniques'
-            ],
-            correct: 1,
-            explanation: 'Form I (Shii-Cho) is the foundation form that teaches basic lightsaber fundamentals and is learned by all Jedi.'
-          },
-          {
-            question: 'Which form is considered the most defensive?',
-            options: [
-              'Form II (Makashi)',
-              'Form III (Soresu)',
-              'Form V (Shien/Djem So)',
-              'Form VII (Juyo/Vaapad)'
-            ],
-            correct: 1,
-            explanation: 'Form III (Soresu) is the most defensive form, focusing on protection and outlasting opponents.'
-          },
-          {
-            question: 'What is the key principle of lightsaber combat?',
-            options: [
-              'Speed above all else',
-              'Overwhelming your opponent',
-              'Balance between offense and defense',
-              'Using the Force to predict attacks'
-            ],
-            correct: 2,
-            explanation: 'Lightsaber combat requires balance between offensive and defensive techniques, combined with Force awareness.'
-          },
-          {
-            question: 'When should a Jedi draw their lightsaber?',
-            options: [
-              'To intimidate opponents',
-              'Only when ready to use it in defense',
-              'To show their rank and status',
-              'Whenever they feel threatened'
-            ],
-            correct: 1,
-            explanation: 'A Jedi should only draw their lightsaber when they are prepared to use it in defense of themselves or others.'
-          }
-        ],
-        'guest-course-3': [
-          {
-            question: 'What is the primary purpose of Jedi meditation?',
-            options: [
-              'To increase physical strength',
-              'To connect with the Force and find inner peace',
-              'To communicate with other Jedi',
-              'To predict the future'
-            ],
-            correct: 1,
-            explanation: 'Jedi meditation helps connect with the Force, find inner peace, and maintain emotional balance.'
-          },
-          {
-            question: 'How often should a Jedi practice meditation?',
-            options: [
-              'Only when facing difficult decisions',
-              'Daily, as a regular practice',
-              'Once a week',
-              'Only during formal training'
-            ],
-            correct: 1,
-            explanation: 'Daily meditation is essential for maintaining Force connection and emotional balance.'
-          },
-          {
-            question: 'What is mindfulness in Jedi practice?',
-            options: [
-              'Thinking about multiple things at once',
-              'Being fully present and aware in the moment',
-              'Planning for future events',
-              'Remembering past experiences'
-            ],
-            correct: 1,
-            explanation: 'Mindfulness is about being fully present and aware in the current moment, essential for Force sensitivity.'
-          },
-          {
-            question: 'What should a Jedi do when experiencing strong emotions?',
-            options: [
-              'Suppress them completely',
-              'Act on them immediately',
-              'Acknowledge them and let them pass through meditation',
-              'Share them with everyone'
-            ],
-            correct: 2,
-            explanation: 'Jedi acknowledge their emotions but don\'t let them control their actions, using meditation to process them peacefully.'
-          },
-          {
-            question: 'What is the benefit of regular meditation practice?',
-            options: [
-              'Increased physical abilities only',
-              'Better Force connection and emotional stability',
-              'Ability to read minds',
-              'Immortality'
-            ],
-            correct: 1,
-            explanation: 'Regular meditation strengthens Force connection, improves emotional stability, and enhances overall Jedi abilities.'
-          }
-        ]
-      };
+      // Fetch quiz questions
+      const { data: questionsData, error: questionsError } = await supabase
+        .from('quiz_questions')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('created_at', { ascending: true });
 
-      const courseQuestions = courseSpecificQuestions[courseData.id] || [
-        {
-          question: `What is the main focus of "${courseData.title}"?`,
-          options: [
-            'Advanced concepts and practical applications',
-            'Basic introduction and theory only',
-            'Historical background information',
-            'General overview without specifics'
-          ],
-          correct: 0,
-          explanation: 'This course focuses on advanced concepts and practical applications to help you master the subject matter effectively.'
-        },
-        {
-          question: 'Which learning strategy is most effective for long-term retention?',
-          options: [
-            'Passive reading and highlighting',
-            'Active recall and spaced repetition',
-            'Cramming before assessments',
-            'Listening to lectures only'
-          ],
-          correct: 1,
-          explanation: 'Active recall combined with spaced repetition has been scientifically proven to be the most effective method for long-term knowledge retention.'
-        },
-        {
-          question: 'How should you approach complex problem-solving in this subject?',
-          options: [
-            'Skip difficult parts initially',
-            'Break problems into smaller components',
-            'Memorize solution patterns',
-            'Work faster to save time'
-          ],
-          correct: 1,
-          explanation: 'Breaking complex problems into smaller, manageable components allows for systematic analysis and better understanding of the solution process.'
-        },
-        {
-          question: 'What role does practice play in skill mastery?',
-          options: [
-            'Practice is optional for naturally gifted individuals',
-            'Only theoretical knowledge matters',
-            'Deliberate practice is essential for expertise',
-            'Practice should be avoided to prevent mistakes'
-          ],
-          correct: 2,
-          explanation: 'Deliberate practice, where you focus on improving specific aspects of performance, is crucial for developing true expertise in any field.'
-        },
-        {
-          question: 'How can you best apply the knowledge from this course?',
-          options: [
-            'Wait until you complete the entire course',
-            'Apply concepts immediately in real situations',
-            'Only use knowledge in test situations',
-            'Avoid practical application until mastery'
-          ],
-          correct: 1,
-          explanation: 'Immediate application of new concepts in real-world situations helps reinforce learning and reveals areas that need further study.'
-        }
-      ];
+      if (questionsError) {
+        throw new Error('Failed to load quiz questions');
+      }
 
-      setQuestions(courseQuestions);
-    } catch (error) {
-      console.error('Error generating quiz:', error);
-      toast.error('Failed to generate quiz questions');
-      navigate('/courses');
+      if (!questionsData || questionsData.length === 0) {
+        setError('No quiz questions available for this course yet. Please try re-uploading the course to generate questions.');
+        setLoading(false);
+        return;
+      }
+
+      // Validate and format questions
+      const validQuestions = questionsData
+        .filter(q => q.question && q.options && Array.isArray(q.options) && q.options.length === 4)
+        .map(q => ({
+          id: q.id,
+          question: q.question,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          explanation: q.explanation || 'No explanation available.'
+        }));
+
+      if (validQuestions.length === 0) {
+        setError('Quiz questions are corrupted. Please try re-uploading the course.');
+        setLoading(false);
+        return;
+      }
+
+      setQuestions(validQuestions);
+    } catch (error: any) {
+      console.error('Error fetching course and questions:', error);
+      setError(error.message || 'Failed to load quiz');
     } finally {
-      setGeneratingQuiz(false);
       setLoading(false);
     }
   };
@@ -379,11 +273,10 @@ const Quiz: React.FC = () => {
   const updateCourseProgress = async (answers: number[]) => {
     if (!course || !user) return;
 
-    const correctAnswers = answers.filter((answer, index) => answer === questions[index].correct).length;
+    const correctAnswers = answers.filter((answer, index) => answer === questions[index].correct_answer).length;
     const progressPercentage = Math.round((correctAnswers / questions.length) * 100);
 
     if (user.isGuest) {
-      // For guest users, just show the completion message
       const pointsEarned = correctAnswers * 10;
       toast.success(`Quiz completed! You would have earned ${pointsEarned} points with an account.`);
       return;
@@ -424,21 +317,72 @@ const Quiz: React.FC = () => {
     setQuizCompleted(false);
   };
 
+  const retryLoading = () => {
+    setLoading(true);
+    setError(null);
+    if (user?.isGuest) {
+      loadGuestCourse();
+    } else {
+      fetchCourseAndQuestions();
+    }
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
   };
 
-  if (loading || generatingQuiz) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3CA7E0] mx-auto mb-4"></div>
-            <p className="text-[#BFC9D9]">
-              {generatingQuiz ? 'Generating quiz questions...' : 'Loading course...'}
-            </p>
+            <p className="text-[#BFC9D9]">Loading quiz questions...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
+        <div className="max-w-4xl mx-auto p-8">
+          <motion.button
+            onClick={() => navigate('/courses')}
+            className="flex items-center space-x-2 text-[#3CA7E0] hover:text-[#5ED3F3] transition-colors duration-200 mb-6"
+            whileHover={{ x: -5 }}
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span>Back to Courses</span>
+          </motion.button>
+
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-[#CBD5E1] text-center">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-6" />
+            <h1 className="text-2xl font-bold text-[#2E3A59] mb-4">Quiz Not Available</h1>
+            <p className="text-[#BFC9D9] mb-6">{error}</p>
+            
+            <div className="flex justify-center space-x-4">
+              <motion.button
+                onClick={retryLoading}
+                className="px-6 py-3 bg-[#3CA7E0] text-white rounded-lg font-semibold flex items-center space-x-2"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <RefreshCw className="h-5 w-5" />
+                <span>Retry</span>
+              </motion.button>
+              <motion.button
+                onClick={() => navigate('/courses')}
+                className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Back to Courses
+              </motion.button>
+            </div>
           </div>
         </div>
       </div>
@@ -463,7 +407,7 @@ const Quiz: React.FC = () => {
     );
   }
 
-  const correctAnswers = userAnswers.filter((answer, index) => answer === questions[index].correct).length;
+  const correctAnswers = userAnswers.filter((answer, index) => answer === questions[index].correct_answer).length;
   const scorePercentage = Math.round((correctAnswers / questions.length) * 100);
 
   return (
@@ -531,9 +475,9 @@ const Quiz: React.FC = () => {
                       disabled={showResult}
                       className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
                         showResult
-                          ? index === questions[currentQuestion].correct
+                          ? index === questions[currentQuestion].correct_answer
                             ? 'border-green-500 bg-green-50 text-green-800'
-                            : index === selectedAnswer && index !== questions[currentQuestion].correct
+                            : index === selectedAnswer && index !== questions[currentQuestion].correct_answer
                             ? 'border-red-500 bg-red-50 text-red-800'
                             : 'border-[#CBD5E1] bg-gray-50 text-[#BFC9D9]'
                           : selectedAnswer === index
@@ -545,18 +489,18 @@ const Quiz: React.FC = () => {
                     >
                       <div className="flex items-center space-x-3">
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          showResult && index === questions[currentQuestion].correct
+                          showResult && index === questions[currentQuestion].correct_answer
                             ? 'border-green-500 bg-green-500'
-                            : showResult && index === selectedAnswer && index !== questions[currentQuestion].correct
+                            : showResult && index === selectedAnswer && index !== questions[currentQuestion].correct_answer
                             ? 'border-red-500 bg-red-500'
                             : selectedAnswer === index
                             ? 'border-[#3CA7E0] bg-[#3CA7E0]'
                             : 'border-[#CBD5E1]'
                         }`}>
-                          {showResult && index === questions[currentQuestion].correct && (
+                          {showResult && index === questions[currentQuestion].correct_answer && (
                             <CheckCircle className="h-4 w-4 text-white" />
                           )}
-                          {showResult && index === selectedAnswer && index !== questions[currentQuestion].correct && (
+                          {showResult && index === selectedAnswer && index !== questions[currentQuestion].correct_answer && (
                             <XCircle className="h-4 w-4 text-white" />
                           )}
                           {!showResult && selectedAnswer === index && (

@@ -4,10 +4,10 @@ const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 if (!OPENROUTER_API_KEY) {
-  throw new Error('Missing OpenRouter API key');
+  console.warn('OpenRouter API key not found - quiz generation will use fallback methods');
 }
 
-const openRouterClient = axios.create({
+export const openRouterClient = axios.create({
   baseURL: OPENROUTER_BASE_URL,
   headers: {
     'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
@@ -24,6 +24,10 @@ export interface QuizQuestion {
 
 export const generateQuiz = async (courseContent: string): Promise<QuizQuestion[]> => {
   try {
+    if (!OPENROUTER_API_KEY) {
+      throw new Error('OpenRouter API key not configured');
+    }
+
     const response = await openRouterClient.post('/chat/completions', {
       model: 'openai/gpt-3.5-turbo',
       messages: [
@@ -50,6 +54,10 @@ export const generateQuiz = async (courseContent: string): Promise<QuizQuestion[
 
 export const generateJediRankQuiz = async (): Promise<QuizQuestion[]> => {
   try {
+    if (!OPENROUTER_API_KEY) {
+      throw new Error('OpenRouter API key not configured');
+    }
+
     const response = await openRouterClient.post('/chat/completions', {
       model: 'openai/gpt-3.5-turbo',
       messages: [
