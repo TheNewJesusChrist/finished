@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Info, Brain, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Sparkles, Info, Brain, CheckCircle, AlertCircle, FileText, Zap } from 'lucide-react';
 import FileUpload from '../components/Upload/FileUpload';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -13,6 +13,7 @@ interface ProcessingStep {
   id: string;
   label: string;
   status: 'pending' | 'processing' | 'completed' | 'error';
+  details?: string;
 }
 
 const Upload: React.FC = () => {
@@ -21,22 +22,23 @@ const Upload: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
+  const [extractedContent, setExtractedContent] = useState<string>('');
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const initializeProcessingSteps = () => {
     setProcessingSteps([
-      { id: 'upload', label: 'Uploading file', status: 'processing' },
-      { id: 'parse', label: 'Parsing document content', status: 'pending' },
-      { id: 'generate', label: 'Generating quiz questions', status: 'pending' },
-      { id: 'save', label: 'Saving course data', status: 'pending' },
+      { id: 'upload', label: 'Uploading file to storage', status: 'processing' },
+      { id: 'parse', label: 'Extracting text from document', status: 'pending' },
+      { id: 'generate', label: 'Generating quiz questions with AI', status: 'pending' },
+      { id: 'save', label: 'Saving course and quiz data', status: 'pending' },
     ]);
   };
 
-  const updateStepStatus = (stepId: string, status: ProcessingStep['status']) => {
+  const updateStepStatus = (stepId: string, status: ProcessingStep['status'], details?: string) => {
     setProcessingSteps(prev => 
       prev.map(step => 
-        step.id === stepId ? { ...step, status } : step
+        step.id === stepId ? { ...step, status, details } : step
       )
     );
   };
@@ -54,11 +56,12 @@ const Upload: React.FC = () => {
 
     setIsUploading(true);
     setUploadProgress(0);
+    setExtractedContent('');
     initializeProcessingSteps();
     
     try {
-      // Step 1: Upload file
-      setUploadProgress(20);
+      // Step 1: Upload file to Supabase Storage
+      setUploadProgress(15);
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
@@ -67,11 +70,11 @@ const Upload: React.FC = () => {
         .upload(fileName, file);
 
       if (uploadError) {
-        throw new Error('Failed to upload file to storage');
+        throw new Error(`Failed to upload file: ${uploadError.message}`);
       }
 
-      updateStepStatus('upload', 'completed');
-      setUploadProgress(40);
+      updateStepStatus('upload', 'completed', 'File uploaded successfully');
+      setUploadProgress(25);
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
@@ -79,21 +82,31 @@ const Upload: React.FC = () => {
         .getPublicUrl(fileName);
 
       // Step 2: Parse document content
-      updateStepStatus('parse', 'processing');
-      setUploadProgress(50);
+      updateStepStatus('parse', 'processing', 'Extracting text content...');
+      setUploadProgress(35);
       
       const parsedContent = await DocumentParser.parseDocument(publicUrl, file.type);
-      updateStepStatus('parse', 'completed');
-      setUploadProgress(70);
+      setExtractedContent(parsedContent.text.substring(0, 500) + '...');
+      
+      updateStepStatus('parse', 'completed', `Extracted ${parsedContent.text.length} characters`);
+      setUploadProgress(55);
 
-      // Step 3: Generate quiz questions
-      updateStepStatus('generate', 'processing');
+      // Step 3: Generate quiz questions using OpenRouter API
+      updateStepStatus('generate', 'processing', 'Generating quiz questions with AI...');
+      setUploadProgress(65);
+      
       const quizQuestions = await QuizGenerator.generateQuestions(parsedContent);
-      updateStepStatus('generate', 'completed');
-      setUploadProgress(85);
+      
+      if (quizQuestions.length === 0) {
+        updateStepStatus('generate', 'error', 'Failed to generate quiz questions');
+        throw new Error('No quiz questions were generated');
+      }
+      
+      updateStepStatus('generate', 'completed', `Generated ${quizQuestions.length} questions`);
+      setUploadProgress(80);
 
-      // Step 4: Save course and questions
-      updateStepStatus('save', 'processing');
+      // Step 4: Save course and questions to database
+      updateStepStatus('save', 'processing', 'Saving to database...');
       
       // Create course record
       const { data: courseData, error: courseError } = await supabase
@@ -102,7 +115,7 @@ const Upload: React.FC = () => {
           {
             user_id: user.id,
             title: courseTitle || parsedContent.title || file.name.split('.')[0],
-            description: courseDescription || `Auto-generated course from ${file.name}`,
+            description: courseDescription || `AI-generated course from ${file.name}`,
             file_url: publicUrl,
             file_type: file.type,
             progress: 0,
@@ -112,38 +125,36 @@ const Upload: React.FC = () => {
         .single();
 
       if (courseError) {
-        throw new Error('Failed to create course record');
+        throw new Error(`Failed to create course: ${courseError.message}`);
       }
 
       // Save quiz questions
-      if (quizQuestions.length > 0) {
-        const questionsToInsert = quizQuestions.map(q => ({
-          course_id: courseData.id,
-          question: q.question,
-          options: q.options,
-          correct_answer: q.correct_answer,
-          explanation: q.explanation,
-        }));
+      const questionsToInsert = quizQuestions.map(q => ({
+        course_id: courseData.id,
+        question: q.question,
+        options: q.options,
+        correct_answer: q.correct_answer,
+        explanation: q.explanation,
+      }));
 
-        const { error: questionsError } = await supabase
-          .from('quiz_questions')
-          .insert(questionsToInsert);
+      const { error: questionsError } = await supabase
+        .from('quiz_questions')
+        .insert(questionsToInsert);
 
-        if (questionsError) {
-          console.error('Error saving quiz questions:', questionsError);
-          // Don't fail the entire upload if questions fail to save
-          toast.error('Course uploaded but quiz generation failed');
-        }
+      if (questionsError) {
+        console.error('Error saving quiz questions:', questionsError);
+        updateStepStatus('save', 'error', 'Failed to save quiz questions');
+        throw new Error(`Failed to save quiz questions: ${questionsError.message}`);
       }
 
-      updateStepStatus('save', 'completed');
+      updateStepStatus('save', 'completed', 'Course and quiz saved successfully');
       setUploadProgress(100);
 
-      toast.success(`Course uploaded successfully with ${quizQuestions.length} quiz questions!`);
+      toast.success(`Course uploaded successfully with ${quizQuestions.length} AI-generated quiz questions!`);
       
       setTimeout(() => {
         navigate('/courses');
-      }, 1500);
+      }, 2000);
 
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -151,7 +162,7 @@ const Upload: React.FC = () => {
       // Update failed step
       const currentStep = processingSteps.find(step => step.status === 'processing');
       if (currentStep) {
-        updateStepStatus(currentStep.id, 'error');
+        updateStepStatus(currentStep.id, 'error', error.message);
       }
       
       toast.error(error.message || 'Upload failed');
@@ -167,23 +178,34 @@ const Upload: React.FC = () => {
     initializeProcessingSteps();
     
     // Simulate the upload process for guest users
-    const steps = ['upload', 'parse', 'generate', 'save'];
+    const steps = [
+      { id: 'upload', delay: 1000, progress: 25 },
+      { id: 'parse', delay: 1500, progress: 55 },
+      { id: 'generate', delay: 2000, progress: 80 },
+      { id: 'save', delay: 1000, progress: 100 }
+    ];
     
-    for (let i = 0; i < steps.length; i++) {
-      updateStepStatus(steps[i], 'processing');
-      setUploadProgress(25 * (i + 1));
+    for (const step of steps) {
+      updateStepStatus(step.id, 'processing');
+      setUploadProgress(step.progress);
       
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, step.delay));
       
-      updateStepStatus(steps[i], 'completed');
+      if (step.id === 'parse') {
+        setExtractedContent('This is a demo of text extraction from your uploaded document. The actual content would be parsed and displayed here...');
+        updateStepStatus(step.id, 'completed', 'Demo text extraction completed');
+      } else if (step.id === 'generate') {
+        updateStepStatus(step.id, 'completed', 'Demo: Generated 5 AI questions');
+      } else {
+        updateStepStatus(step.id, 'completed');
+      }
     }
     
-    toast.success('Demo upload completed! Create an account to save your courses and generated quizzes.');
+    toast.success('Demo upload completed! Create an account to save your courses and use real AI quiz generation.');
     
     setTimeout(() => {
       navigate('/courses');
-    }, 1500);
+    }, 2000);
   };
 
   const getStepIcon = (status: ProcessingStep['status']) => {
@@ -227,7 +249,7 @@ const Upload: React.FC = () => {
               )}
             </h1>
             <p className="text-[#BFC9D9] text-lg">
-              Transform your documents into interactive learning experiences with AI-powered quizzes.
+              Transform your documents into interactive learning experiences with AI-powered quiz generation.
             </p>
             
             {user?.isGuest && (
@@ -237,7 +259,7 @@ const Upload: React.FC = () => {
                   <p className="text-sm text-blue-700 font-medium">Demo Upload Mode</p>
                   <p className="text-sm text-blue-600 mt-1">
                     You can try the upload process, but files won't be permanently saved. 
-                    Create an account to save your courses and track progress.
+                    Create an account to save your courses and use real AI quiz generation.
                   </p>
                 </div>
               </div>
@@ -311,35 +333,60 @@ const Upload: React.FC = () => {
           >
             <h3 className="text-lg font-semibold text-[#2E3A59] mb-4 flex items-center space-x-2">
               <Brain className="h-5 w-5 text-[#3CA7E0]" />
-              <span>Processing Status</span>
+              <span>AI Processing Status</span>
             </h3>
             
-            <div className="space-y-3">
+            <div className="space-y-4">
               {processingSteps.map((step, index) => (
-                <div key={step.id} className="flex items-center space-x-3">
+                <div key={step.id} className="flex items-start space-x-3">
                   {getStepIcon(step.status)}
-                  <span className={`text-sm ${
-                    step.status === 'completed' ? 'text-green-600' :
-                    step.status === 'error' ? 'text-red-600' :
-                    step.status === 'processing' ? 'text-[#3CA7E0]' :
-                    'text-[#BFC9D9]'
-                  }`}>
-                    {step.label}
-                  </span>
+                  <div className="flex-1">
+                    <span className={`text-sm font-medium ${
+                      step.status === 'completed' ? 'text-green-600' :
+                      step.status === 'error' ? 'text-red-600' :
+                      step.status === 'processing' ? 'text-[#3CA7E0]' :
+                      'text-[#BFC9D9]'
+                    }`}>
+                      {step.label}
+                    </span>
+                    {step.details && (
+                      <p className="text-xs text-[#BFC9D9] mt-1">{step.details}</p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </motion.div>
         )}
 
+        {/* Extracted Content Preview */}
+        {extractedContent && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mt-8 bg-white rounded-xl shadow-lg p-6 border border-[#CBD5E1]"
+          >
+            <h3 className="text-lg font-semibold text-[#2E3A59] mb-4 flex items-center space-x-2">
+              <FileText className="h-5 w-5 text-[#10B981]" />
+              <span>Extracted Content Preview</span>
+            </h3>
+            <div className="bg-[#F5F7FA] rounded-lg p-4 text-sm text-[#2E3A59] max-h-32 overflow-y-auto">
+              {extractedContent}
+            </div>
+          </motion.div>
+        )}
+
+        {/* How It Works */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
           className="mt-8 bg-white rounded-xl shadow-lg p-6 border border-[#CBD5E1]"
         >
-          <h3 className="text-lg font-semibold text-[#2E3A59] mb-4">
-            What happens next?
+          <h3 className="text-lg font-semibold text-[#2E3A59] mb-4 flex items-center space-x-2">
+            <Zap className="h-5 w-5 text-[#F59E0B]" />
+            <span>AI-Powered Quiz Generation</span>
           </h3>
           <div className="grid md:grid-cols-4 gap-4">
             <div className="text-center">
@@ -347,7 +394,7 @@ const Upload: React.FC = () => {
                 <span className="font-bold">1</span>
               </div>
               <p className="text-sm text-[#2E3A59]">
-                File is uploaded and stored securely
+                Upload PDF, PowerPoint, or Word document
               </p>
             </div>
             <div className="text-center">
@@ -355,7 +402,7 @@ const Upload: React.FC = () => {
                 <span className="font-bold">2</span>
               </div>
               <p className="text-sm text-[#2E3A59]">
-                Content is parsed and key concepts extracted
+                AI extracts and analyzes content
               </p>
             </div>
             <div className="text-center">
@@ -363,7 +410,7 @@ const Upload: React.FC = () => {
                 <span className="font-bold">3</span>
               </div>
               <p className="text-sm text-[#2E3A59]">
-                AI generates relevant quiz questions
+                OpenRouter AI generates relevant quiz questions
               </p>
             </div>
             <div className="text-center">
@@ -371,7 +418,7 @@ const Upload: React.FC = () => {
                 <span className="font-bold">4</span>
               </div>
               <p className="text-sm text-[#2E3A59]">
-                Course is ready for interactive learning
+                Interactive course ready for learning
               </p>
             </div>
           </div>
