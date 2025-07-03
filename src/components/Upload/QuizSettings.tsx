@@ -13,7 +13,7 @@ const QuizSettings: React.FC<QuizSettingsProps> = ({
   onQuestionCountChange,
   disabled = false,
 }) => {
-  const questionOptions = [3, 4, 5, 6, 7, 8, 9, 10];
+  const questionOptions = [3, 4, 5, 6, 7, 8, 9, 10, 12, 15];
 
   return (
     <motion.div
@@ -32,7 +32,7 @@ const QuizSettings: React.FC<QuizSettingsProps> = ({
           <label className="block text-sm font-medium text-[#2E3A59] mb-2">
             Number of Questions
           </label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {questionOptions.map((count) => (
               <motion.button
                 key={count}
@@ -51,7 +51,7 @@ const QuizSettings: React.FC<QuizSettingsProps> = ({
             ))}
           </div>
           <p className="text-xs text-[#BFC9D9] mt-2">
-            Choose between 3-10 questions for your quiz
+            Choose between 3-15 questions for your quiz
           </p>
         </div>
 
@@ -59,11 +59,26 @@ const QuizSettings: React.FC<QuizSettingsProps> = ({
           <div className="flex items-start space-x-2">
             <HelpCircle className="h-4 w-4 text-[#3CA7E0] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs text-[#2E3A59] font-medium mb-1">Smart Question Generation</p>
+              <p className="text-xs text-[#2E3A59] font-medium mb-1">Enhanced AI Quiz Generation</p>
               <p className="text-xs text-[#BFC9D9]">
-                Our AI analyzes your document content to create relevant multiple-choice questions 
-                with intelligent distractors based on the actual material.
+                Our advanced AI analyzes your document's structure, concepts, definitions, and facts to create 
+                contextually relevant multiple-choice questions with intelligent distractors based on the actual content.
               </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+          <div className="flex items-start space-x-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <p className="text-xs text-blue-800 font-medium mb-1">Smart Question Types</p>
+              <ul className="text-xs text-blue-700 space-y-1">
+                <li>• Definition-based questions (25%)</li>
+                <li>• Concept application questions (25%)</li>
+                <li>• Fact and data questions (25%)</li>
+                <li>• Process and procedure questions (25%)</li>
+              </ul>
             </div>
           </div>
         </div>

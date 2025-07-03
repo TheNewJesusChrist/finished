@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sword, User, LogOut } from 'lucide-react';
+import { Sword, User, LogOut, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
   const [clickCount, setClickCount] = useState(0);
-  const [showYoda, setShowYoda] = useState(false);
+  const [showEasterEgg, setShowEasterEgg] = useState(false);
 
   const getRankColor = (rank: string) => {
     switch (rank) {
@@ -23,25 +23,24 @@ const Header: React.FC = () => {
     setClickCount(prev => prev + 1);
     
     if (clickCount === 4) { // 5th click (0-indexed)
-      setShowYoda(true);
+      setShowEasterEgg(true);
       setClickCount(0);
       
-      // Play Yoda sound effect (if available)
+      // Play sound effect (if available)
       try {
         const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.wav');
         audio.volume = 0.3;
         audio.play().catch(() => {
-          // Fallback if audio fails
           console.log('Audio playback failed');
         });
       } catch (error) {
         console.log('Audio not available');
       }
       
-      // Hide Yoda after 5 seconds
+      // Hide easter egg after 8 seconds
       setTimeout(() => {
-        setShowYoda(false);
-      }, 5000);
+        setShowEasterEgg(false);
+      }, 8000);
     }
   };
 
@@ -63,6 +62,10 @@ const Header: React.FC = () => {
       toast.error('Failed to sign out');
       console.error('Sign out error:', error);
     }
+  };
+
+  const closeEasterEgg = () => {
+    setShowEasterEgg(false);
   };
 
   return (
@@ -116,64 +119,162 @@ const Header: React.FC = () => {
         </div>
       </header>
 
-      {/* Yoda Easter Egg */}
+      {/* Enhanced Easter Egg with Custom Avatar */}
       <AnimatePresence>
-        {showYoda && (
+        {showEasterEgg && (
           <motion.div
-            initial={{ opacity: 0, scale: 0, rotate: -180 }}
-            animate={{ 
-              opacity: 1, 
-              scale: 1, 
-              rotate: 0,
-              y: [0, -20, 0],
-            }}
-            exit={{ opacity: 0, scale: 0, rotate: 180 }}
-            transition={{ 
-              duration: 0.8,
-              y: { repeat: Infinity, duration: 2 }
-            }}
-            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+            onClick={closeEasterEgg}
           >
-            <div className="bg-gradient-to-r from-green-400 to-green-600 rounded-full p-4 shadow-2xl">
-              <div className="text-white text-center">
-                <div className="text-4xl mb-2">🧙‍♂️</div>
-                <div className="text-sm font-bold whitespace-nowrap">
-                  "Strong with the Force, you are!"
-                </div>
-                <div className="text-xs mt-1 opacity-80">
-                  - Master Yoda
-                </div>
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ 
+                scale: 1, 
+                rotate: 0,
+                y: [0, -10, 0],
+              }}
+              exit={{ scale: 0, rotate: 180 }}
+              transition={{ 
+                duration: 0.8,
+                y: { repeat: Infinity, duration: 2 }
+              }}
+              className="relative bg-gradient-to-br from-[#3CA7E0] to-[#5ED3F3] rounded-2xl p-8 shadow-2xl max-w-md mx-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close button */}
+              <motion.button
+                onClick={closeEasterEgg}
+                className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <X className="h-4 w-4 text-white" />
+              </motion.button>
+
+              <div className="text-center text-white">
+                {/* Custom Avatar */}
+                <motion.div
+                  className="w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden border-4 border-white/30 shadow-xl"
+                  animate={{ 
+                    boxShadow: [
+                      '0 0 20px rgba(255,255,255,0.3)',
+                      '0 0 40px rgba(255,255,255,0.6)',
+                      '0 0 20px rgba(255,255,255,0.3)'
+                    ]
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <img 
+                    src="/easter/my-easter-avatar.png" 
+                    alt="Secret Jedi Avatar"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to emoji if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.parentElement!.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-6xl">🤖</div>';
+                    }}
+                  />
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <h2 className="text-2xl font-bold mb-3">
+                    🎉 Surprise Jedi! 🎉
+                  </h2>
+                  <p className="text-lg mb-2 font-semibold">
+                    You've unlocked a secret!
+                  </p>
+                  <p className="text-sm opacity-90 mb-4">
+                    "The Force is strong with those who seek hidden knowledge."
+                  </p>
+                  <p className="text-xs opacity-75">
+                    - Master of Secrets
+                  </p>
+                </motion.div>
               </div>
-            </div>
-            
-            {/* Sparkle effects */}
-            <motion.div
-              className="absolute -top-2 -left-2 text-yellow-300 text-xl"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              ✨
-            </motion.div>
-            <motion.div
-              className="absolute -top-2 -right-2 text-yellow-300 text-xl"
-              animate={{ rotate: -360 }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              ✨
-            </motion.div>
-            <motion.div
-              className="absolute -bottom-2 -left-2 text-yellow-300 text-xl"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-            >
-              ✨
-            </motion.div>
-            <motion.div
-              className="absolute -bottom-2 -right-2 text-yellow-300 text-xl"
-              animate={{ rotate: -360 }}
-              transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-            >
-              ✨
+              
+              {/* Animated sparkles around the avatar */}
+              <motion.div
+                className="absolute top-16 left-16 text-yellow-300 text-2xl"
+                animate={{ 
+                  rotate: 360,
+                  scale: [1, 1.2, 1]
+                }}
+                transition={{ 
+                  rotate: { duration: 3, repeat: Infinity },
+                  scale: { duration: 1.5, repeat: Infinity }
+                }}
+              >
+                ✨
+              </motion.div>
+              <motion.div
+                className="absolute top-20 right-20 text-yellow-300 text-xl"
+                animate={{ 
+                  rotate: -360,
+                  scale: [1, 1.3, 1]
+                }}
+                transition={{ 
+                  rotate: { duration: 2.5, repeat: Infinity },
+                  scale: { duration: 1.8, repeat: Infinity, delay: 0.5 }
+                }}
+              >
+                ⭐
+              </motion.div>
+              <motion.div
+                className="absolute bottom-20 left-20 text-yellow-300 text-lg"
+                animate={{ 
+                  rotate: 360,
+                  scale: [1, 1.1, 1]
+                }}
+                transition={{ 
+                  rotate: { duration: 4, repeat: Infinity },
+                  scale: { duration: 2, repeat: Infinity, delay: 1 }
+                }}
+              >
+                💫
+              </motion.div>
+              <motion.div
+                className="absolute bottom-24 right-16 text-yellow-300 text-xl"
+                animate={{ 
+                  rotate: -360,
+                  scale: [1, 1.4, 1]
+                }}
+                transition={{ 
+                  rotate: { duration: 3.5, repeat: Infinity },
+                  scale: { duration: 1.2, repeat: Infinity, delay: 0.8 }
+                }}
+              >
+                🌟
+              </motion.div>
+
+              {/* Floating particles */}
+              {[...Array(6)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-2 h-2 bg-white/60 rounded-full"
+                  style={{
+                    left: `${20 + Math.random() * 60}%`,
+                    top: `${20 + Math.random() * 60}%`,
+                  }}
+                  animate={{
+                    y: [0, -20, 0],
+                    opacity: [0.3, 1, 0.3],
+                    scale: [1, 1.5, 1],
+                  }}
+                  transition={{
+                    duration: 2 + Math.random() * 2,
+                    repeat: Infinity,
+                    delay: Math.random() * 2,
+                  }}
+                />
+              ))}
             </motion.div>
           </motion.div>
         )}

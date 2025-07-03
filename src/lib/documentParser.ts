@@ -14,6 +14,10 @@ export interface ParsedContent {
   definitions: string[];
   facts: string[];
   examples: string[];
+  sections: string[];
+  vocabulary: string[];
+  processes: string[];
+  statistics: string[];
 }
 
 export class DocumentParser {
@@ -51,29 +55,49 @@ export class DocumentParser {
       
       let fullText = '';
       const headings: string[] = [];
+      const sections: string[] = [];
       
-      // Extract text from each page
-      for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 50); pageNum++) { // Limit to 50 pages
+      // Extract text from each page with better structure analysis
+      for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 50); pageNum++) {
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
         
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
+        // Analyze text items for structure
+        const textItems = textContent.items as any[];
+        let pageText = '';
+        let currentSection = '';
+        
+        textItems.forEach((item, index) => {
+          const text = item.str.trim();
+          if (!text) return;
+          
+          // Detect headings based on font size and position
+          const fontSize = item.transform[0];
+          const nextItem = textItems[index + 1];
+          const isLargeFont = fontSize > 12;
+          const isIsolatedText = !nextItem || Math.abs(item.transform[5] - nextItem.transform[5]) > 20;
+          
+          if (this.isLikelyHeading(text) || (isLargeFont && isIsolatedText && text.length < 100)) {
+            headings.push(text);
+            if (currentSection) {
+              sections.push(currentSection.trim());
+            }
+            currentSection = text + '\n';
+          } else {
+            currentSection += text + ' ';
+          }
+          
+          pageText += text + ' ';
+        });
+        
+        if (currentSection) {
+          sections.push(currentSection.trim());
+        }
         
         fullText += pageText + '\n';
-        
-        // Extract potential headings (text that appears to be titles)
-        const lines = pageText.split('\n');
-        lines.forEach(line => {
-          const trimmed = line.trim();
-          if (this.isLikelyHeading(trimmed)) {
-            headings.push(trimmed);
-          }
-        });
       }
       
-      return this.analyzeContent(fullText, headings);
+      return this.analyzeContent(fullText, headings, sections);
     } catch (error) {
       console.error('Error parsing PDF:', error);
       throw new Error('Failed to parse PDF content. The file may be corrupted or password-protected.');
@@ -82,14 +106,13 @@ export class DocumentParser {
 
   private static async parsePowerPoint(fileUrl: string): Promise<ParsedContent> {
     try {
-      // For PowerPoint files, we'll use a more sophisticated mock
-      // In production, you'd use a server-side service or specialized library
+      // For PowerPoint files, we'll use enhanced mock content based on common presentation patterns
       const response = await fetch(fileUrl);
       if (!response.ok) {
         throw new Error('Failed to fetch PowerPoint file');
       }
       
-      // Return enhanced mock content for PowerPoint
+      // Return enhanced mock content for PowerPoint with more realistic structure
       return this.getMockPowerPointContent();
     } catch (error) {
       console.error('Error parsing PowerPoint:', error);
@@ -114,21 +137,25 @@ export class DocumentParser {
       }
       
       const headings = this.extractHeadings(text);
+      const sections = this.extractSections(text, headings);
       
-      return this.analyzeContent(text, headings);
+      return this.analyzeContent(text, headings, sections);
     } catch (error) {
       console.error('Error parsing Word document:', error);
       throw new Error('Failed to parse Word document. Please ensure the file is not corrupted.');
     }
   }
 
-  private static analyzeContent(text: string, headings: string[]): ParsedContent {
+  private static analyzeContent(text: string, headings: string[], sections: string[] = []): ParsedContent {
     const title = this.extractTitle(text, headings);
     const keyPoints = this.extractKeyPoints(text);
     const concepts = this.extractConcepts(text);
     const definitions = this.extractDefinitions(text);
     const facts = this.extractFacts(text);
     const examples = this.extractExamples(text);
+    const vocabulary = this.extractVocabulary(text);
+    const processes = this.extractProcesses(text);
+    const statistics = this.extractStatistics(text);
     
     return {
       text: text.trim(),
@@ -138,20 +165,26 @@ export class DocumentParser {
       concepts,
       definitions,
       facts,
-      examples
+      examples,
+      sections: sections.slice(0, 10),
+      vocabulary,
+      processes,
+      statistics
     };
   }
 
   private static isLikelyHeading(text: string): boolean {
     if (text.length < 3 || text.length > 100) return false;
     
-    // Check for heading patterns
+    // Enhanced heading detection patterns
     return (
       /^[A-Z]/.test(text) || // Starts with capital
       /^\d+\./.test(text) || // Numbered heading
+      /^[IVX]+\./.test(text) || // Roman numerals
       text.includes(':') || // Contains colon
-      /^(Chapter|Section|Part|Introduction|Conclusion|Overview|Summary)/i.test(text) ||
-      text === text.toUpperCase() // All caps
+      /^(Chapter|Section|Part|Introduction|Conclusion|Overview|Summary|Abstract|Background|Methodology|Results|Discussion|References)/i.test(text) ||
+      text === text.toUpperCase() || // All caps
+      /^[A-Z][a-z]+(\s+[A-Z][a-z]+)*$/.test(text) // Title case
     );
   }
 
@@ -172,6 +205,30 @@ export class DocumentParser {
     return 'Course Content';
   }
 
+  private static extractSections(text: string, headings: string[]): string[] {
+    const sections: string[] = [];
+    const lines = text.split('\n');
+    let currentSection = '';
+    
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (headings.includes(trimmed)) {
+        if (currentSection) {
+          sections.push(currentSection.trim());
+        }
+        currentSection = trimmed + '\n';
+      } else if (trimmed) {
+        currentSection += trimmed + ' ';
+      }
+    });
+    
+    if (currentSection) {
+      sections.push(currentSection.trim());
+    }
+    
+    return sections;
+  }
+
   private static extractHeadings(text: string): string[] {
     const lines = text.split('\n');
     const headings: string[] = [];
@@ -190,14 +247,15 @@ export class DocumentParser {
     const keyPoints: string[] = [];
     const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
     
-    // Look for sentences that might be key points
+    // Look for sentences that might be key points with enhanced patterns
     sentences.forEach(sentence => {
       const trimmed = sentence.trim();
       if (trimmed.length > 30 && trimmed.length < 200) {
-        // Look for sentences with key indicators
-        if (/\b(important|key|main|primary|essential|crucial|significant|fundamental|critical)\b/i.test(trimmed) ||
-            /\b(is|are|means|refers to|defined as|consists of|includes)\b/i.test(trimmed) ||
-            /\b(first|second|third|finally|therefore|however|moreover)\b/i.test(trimmed)) {
+        // Enhanced key point indicators
+        if (/\b(important|key|main|primary|essential|crucial|significant|fundamental|critical|vital|core|central|major)\b/i.test(trimmed) ||
+            /\b(is|are|means|refers to|defined as|consists of|includes|involves|requires|demonstrates|shows|indicates)\b/i.test(trimmed) ||
+            /\b(first|second|third|finally|therefore|however|moreover|furthermore|additionally|consequently)\b/i.test(trimmed) ||
+            /\b(must|should|will|can|may|might|could|would|need to|have to)\b/i.test(trimmed)) {
           keyPoints.push(trimmed);
         }
       }
@@ -208,181 +266,317 @@ export class DocumentParser {
       const additionalPoints = sentences
         .filter(s => s.trim().length > 40 && s.trim().length < 150)
         .filter(s => !keyPoints.includes(s.trim()))
-        .slice(0, 5 - keyPoints.length);
+        .slice(0, 8 - keyPoints.length);
       keyPoints.push(...additionalPoints);
     }
     
-    return keyPoints.slice(0, 8);
+    return keyPoints.slice(0, 10);
   }
 
   private static extractConcepts(text: string): string[] {
     const concepts: string[] = [];
     
-    // Look for capitalized terms that might be concepts
-    const words = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
-    const conceptCandidates = words.filter(word => 
-      word.length > 3 && 
-      word.length < 50 &&
-      !/^(The|This|That|These|Those|When|Where|What|How|Why|Who)/.test(word)
-    );
+    // Enhanced concept extraction with better patterns
+    const conceptPatterns = [
+      /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|refers to|means|involves)/g,
+      /\b(?:concept of|theory of|principle of|method of|approach to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g,
+      /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:theory|principle|concept|method|approach|technique|strategy)/g
+    ];
     
-    // Count frequency and take most common
-    const frequency: { [key: string]: number } = {};
-    conceptCandidates.forEach(concept => {
-      frequency[concept] = (frequency[concept] || 0) + 1;
+    conceptPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const concept = match[1].trim();
+        if (concept.length > 3 && concept.length < 50 && 
+            !/^(The|This|That|These|Those|When|Where|What|How|Why|Who|Which|Some|Many|Most|All)/.test(concept)) {
+          concepts.push(concept);
+        }
+      }
     });
     
-    const sortedConcepts = Object.entries(frequency)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 10)
-      .map(([concept]) => concept);
+    // Also look for capitalized terms that appear frequently
+    const words = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
+    const frequency: { [key: string]: number } = {};
     
-    return sortedConcepts;
+    words.forEach(word => {
+      if (word.length > 3 && word.length < 50) {
+        frequency[word] = (frequency[word] || 0) + 1;
+      }
+    });
+    
+    const frequentConcepts = Object.entries(frequency)
+      .filter(([word, count]) => count >= 2)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 8)
+      .map(([word]) => word);
+    
+    concepts.push(...frequentConcepts);
+    
+    return [...new Set(concepts)].slice(0, 12);
   }
 
   private static extractDefinitions(text: string): string[] {
     const definitions: string[] = [];
     
-    // Look for definition patterns
+    // Enhanced definition patterns
     const definitionPatterns = [
-      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+is\s+([^.!?]+)/g,
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+is\s+(?:a|an|the)?\s*([^.!?]+)/g,
       /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+refers to\s+([^.!?]+)/g,
       /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+means\s+([^.!?]+)/g,
       /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+can be defined as\s+([^.!?]+)/g,
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+involves\s+([^.!?]+)/g,
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+consists of\s+([^.!?]+)/g,
     ];
     
     definitionPatterns.forEach(pattern => {
       let match;
-      while ((match = pattern.exec(text)) !== null && definitions.length < 8) {
+      while ((match = pattern.exec(text)) !== null && definitions.length < 10) {
         const term = match[1].trim();
         const definition = match[2].trim();
-        if (term.length > 2 && definition.length > 10) {
+        if (term.length > 2 && definition.length > 10 && definition.length < 200) {
           definitions.push(`${term}: ${definition}`);
         }
       }
     });
     
-    return definitions.slice(0, 8);
+    return definitions.slice(0, 10);
   }
 
   private static extractFacts(text: string): string[] {
     const facts: string[] = [];
     
-    // Look for factual statements with numbers, dates, percentages
+    // Enhanced fact patterns
     const factPatterns = [
       /[^.!?]*\b\d+%[^.!?]*/g, // Percentages
       /[^.!?]*\b\d{4}\b[^.!?]*/g, // Years
       /[^.!?]*\b\d+\s*(million|billion|thousand|hundred)[^.!?]*/g, // Large numbers
-      /[^.!?]*\b(approximately|about|over|under|more than|less than)\s+\d+[^.!?]*/g, // Approximate numbers
+      /[^.!?]*\b(approximately|about|over|under|more than|less than|up to|as much as)\s+\d+[^.!?]*/g, // Approximate numbers
+      /[^.!?]*\b\d+\s*(percent|degrees|miles|kilometers|hours|minutes|seconds|days|weeks|months|years)[^.!?]*/g, // Units
+      /[^.!?]*\b(research shows|studies indicate|data reveals|statistics show|evidence suggests)[^.!?]*/g, // Research facts
     ];
     
     factPatterns.forEach(pattern => {
       const matches = text.match(pattern) || [];
       matches.forEach(match => {
         const fact = match.trim();
-        if (fact.length > 20 && fact.length < 150) {
+        if (fact.length > 20 && fact.length < 200) {
           facts.push(fact);
         }
       });
     });
     
-    return [...new Set(facts)].slice(0, 6);
+    return [...new Set(facts)].slice(0, 8);
   }
 
   private static extractExamples(text: string): string[] {
     const examples: string[] = [];
     
-    // Look for example patterns
+    // Enhanced example patterns
     const examplePatterns = [
       /for example[^.!?]*[.!?]/gi,
       /such as[^.!?]*[.!?]/gi,
       /including[^.!?]*[.!?]/gi,
       /like[^.!?]*[.!?]/gi,
+      /for instance[^.!?]*[.!?]/gi,
+      /e\.g\.[^.!?]*[.!?]/gi,
+      /consider[^.!?]*[.!?]/gi,
+      /imagine[^.!?]*[.!?]/gi,
     ];
     
     examplePatterns.forEach(pattern => {
       const matches = text.match(pattern) || [];
       matches.forEach(match => {
         const example = match.trim();
-        if (example.length > 15 && example.length < 200) {
+        if (example.length > 15 && example.length < 250) {
           examples.push(example);
         }
       });
     });
     
-    return [...new Set(examples)].slice(0, 5);
+    return [...new Set(examples)].slice(0, 6);
+  }
+
+  private static extractVocabulary(text: string): string[] {
+    const vocabulary: string[] = [];
+    
+    // Extract technical terms and specialized vocabulary
+    const vocabPatterns = [
+      /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+\(([^)]+)\)/g, // Terms with explanations in parentheses
+      /\b([a-z]+tion|[a-z]+sion|[a-z]+ment|[a-z]+ness|[a-z]+ity|[a-z]+ism)\b/g, // Common suffixes
+    ];
+    
+    vocabPatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const term = match[1] || match[0];
+        if (term.length > 4 && term.length < 30) {
+          vocabulary.push(term);
+        }
+      }
+    });
+    
+    return [...new Set(vocabulary)].slice(0, 15);
+  }
+
+  private static extractProcesses(text: string): string[] {
+    const processes: string[] = [];
+    
+    // Extract step-by-step processes and procedures
+    const processPatterns = [
+      /(?:step|stage|phase|procedure|process|method)\s+\d+[^.!?]*[.!?]/gi,
+      /(?:first|second|third|fourth|fifth|next|then|finally|lastly)[^.!?]*[.!?]/gi,
+    ];
+    
+    processPatterns.forEach(pattern => {
+      const matches = text.match(pattern) || [];
+      matches.forEach(match => {
+        const process = match.trim();
+        if (process.length > 20 && process.length < 200) {
+          processes.push(process);
+        }
+      });
+    });
+    
+    return [...new Set(processes)].slice(0, 8);
+  }
+
+  private static extractStatistics(text: string): string[] {
+    const statistics: string[] = [];
+    
+    // Extract statistical information and data
+    const statPatterns = [
+      /\b\d+(?:\.\d+)?%\s+of[^.!?]*[.!?]/g,
+      /\b(?:average|mean|median|standard deviation|correlation)[^.!?]*[.!?]/gi,
+      /\b\d+\s+out of\s+\d+[^.!?]*[.!?]/g,
+    ];
+    
+    statPatterns.forEach(pattern => {
+      const matches = text.match(pattern) || [];
+      matches.forEach(match => {
+        const stat = match.trim();
+        if (stat.length > 15 && stat.length < 150) {
+          statistics.push(stat);
+        }
+      });
+    });
+    
+    return [...new Set(statistics)].slice(0, 6);
   }
 
   private static getMockPowerPointContent(): ParsedContent {
     return {
       text: `
-        Digital Marketing Strategy Presentation
+        Advanced Digital Marketing Strategy and Implementation
         
-        Slide 1: Introduction to Digital Marketing
-        Digital marketing encompasses all marketing efforts that use electronic devices or the internet. Businesses leverage digital channels such as search engines, social media, email, and other websites to connect with current and prospective customers. The global digital marketing market is expected to reach $786.2 billion by 2026.
+        Slide 1: Executive Summary and Market Overview
+        Digital marketing has revolutionized how businesses connect with customers in the 21st century. The global digital marketing market reached $350 billion in 2020 and is projected to exceed $786.2 billion by 2026, representing a compound annual growth rate of 13.9%. This transformation encompasses multiple channels including search engine optimization, social media marketing, content marketing, email campaigns, and paid advertising platforms.
         
-        Slide 2: Core Components of Digital Marketing
-        Search Engine Optimization (SEO) is the practice of optimizing websites to rank higher in search engine results pages. Pay-Per-Click Advertising (PPC) allows businesses to display ads on search engines and social platforms. Social Media Marketing involves building brand awareness and engagement on platforms like Facebook, Instagram, and LinkedIn. Content Marketing focuses on creating valuable content to attract and retain customers. Email Marketing provides direct communication with customers through targeted campaigns.
+        Slide 2: Search Engine Optimization Fundamentals
+        Search Engine Optimization (SEO) is the practice of optimizing websites to rank higher in search engine results pages organically. Key components include keyword research and analysis, on-page optimization techniques, technical SEO implementation, and strategic link building. On-page SEO involves optimizing title tags, meta descriptions, header structures, and content quality. Technical SEO ensures proper website architecture, loading speed optimization, mobile responsiveness, and crawlability.
         
-        Slide 3: SEO Fundamentals
-        Search Engine Optimization improves website visibility through organic search results. Key components include keyword research, on-page optimization, technical SEO, and link building. On-page SEO involves optimizing title tags, meta descriptions, headers, and content. Technical SEO ensures proper website structure, loading speed, and mobile responsiveness.
+        Slide 3: Pay-Per-Click Advertising Strategy
+        Pay-Per-Click (PPC) advertising allows businesses to display targeted advertisements on search engines and social platforms. Google Ads accounts for approximately 73% of search ad revenue globally. Effective PPC campaigns require comprehensive keyword research, compelling ad copy creation, strategic bid management, and continuous performance optimization. Quality Score, determined by ad relevance, expected click-through rate, and landing page experience, directly impacts ad positioning and cost-per-click.
         
-        Slide 4: Social Media Strategy
-        Effective social media marketing requires understanding your target audience demographics and preferences. Content should be engaging, shareable, and aligned with brand voice. Posting frequency varies by platform: Instagram 1-2 times daily, Facebook 3-5 times weekly, LinkedIn 1-2 times daily. User-generated content increases engagement by 28% compared to standard company posts.
+        Slide 4: Social Media Marketing Excellence
+        Social media marketing involves building brand awareness and engagement across platforms like Facebook, Instagram, LinkedIn, Twitter, and TikTok. Each platform requires tailored content strategies: Instagram favors visual storytelling with 1-2 daily posts, LinkedIn emphasizes professional content with 1-2 weekly posts, and TikTok thrives on authentic, entertaining short-form videos. User-generated content increases engagement rates by 28% compared to standard branded content.
         
-        Slide 5: Content Marketing Best Practices
-        Content marketing generates 3 times more leads than traditional marketing while costing 62% less. Quality content builds trust, establishes authority, and drives profitable customer action. Blog posts should be 1,600-2,400 words for optimal SEO performance. Video content receives 1,200% more shares than text and image content combined.
+        Slide 5: Content Marketing Strategy and Implementation
+        Content marketing generates three times more leads than traditional outbound marketing while costing 62% less per acquisition. Effective content strategies include blog posts optimized for SEO (1,600-2,400 words for optimal performance), video content (which receives 1,200% more shares than text and images combined), infographics, podcasts, and interactive content. Content should address customer pain points, provide valuable solutions, and guide prospects through the buyer's journey.
         
-        Slide 6: Measuring Digital Marketing Success
-        Key Performance Indicators (KPIs) include website traffic, conversion rates, engagement rates, click-through rates, return on investment (ROI), and customer acquisition cost (CAC). Google Analytics provides comprehensive tracking of website performance. Social media analytics tools measure engagement, reach, and follower growth.
+        Slide 6: Email Marketing Automation and Personalization
+        Email marketing delivers an average return on investment of $42 for every dollar spent. Successful email campaigns utilize segmentation based on demographics, behavior, and purchase history. Automation workflows include welcome series, abandoned cart recovery, post-purchase follow-ups, and re-engagement campaigns. Personalization beyond first names, such as product recommendations and location-based offers, can increase click-through rates by 14% and conversion rates by 10%.
         
-        Slide 7: Future Trends in Digital Marketing
-        Artificial Intelligence is revolutionizing personalization and customer targeting. Voice search optimization is becoming crucial as 50% of adults use voice search daily. Video marketing will account for 82% of all internet traffic by 2025. Privacy-focused marketing strategies are essential due to increasing data protection regulations.
+        Slide 7: Analytics and Performance Measurement
+        Key Performance Indicators (KPIs) for digital marketing include website traffic growth, conversion rates, customer acquisition cost (CAC), lifetime value (LTV), return on ad spend (ROAS), and engagement metrics. Google Analytics 4 provides comprehensive tracking of user behavior, conversion paths, and attribution modeling. Advanced analytics tools like heat mapping, A/B testing, and cohort analysis provide deeper insights into user experience and campaign effectiveness.
+        
+        Slide 8: Emerging Trends and Future Opportunities
+        Artificial Intelligence and machine learning are revolutionizing personalization, chatbot interactions, and predictive analytics. Voice search optimization is becoming crucial as 50% of adults use voice search daily. Video marketing will account for 82% of all internet traffic by 2025. Privacy-focused marketing strategies are essential due to increasing data protection regulations like GDPR and CCPA. Augmented reality (AR) and virtual reality (VR) technologies are creating new immersive marketing experiences.
       `,
-      title: 'Digital Marketing Strategy',
+      title: 'Advanced Digital Marketing Strategy and Implementation',
       headings: [
-        'Introduction to Digital Marketing',
-        'Core Components of Digital Marketing',
-        'SEO Fundamentals',
-        'Social Media Strategy',
-        'Content Marketing Best Practices',
-        'Measuring Digital Marketing Success',
-        'Future Trends in Digital Marketing'
+        'Executive Summary and Market Overview',
+        'Search Engine Optimization Fundamentals',
+        'Pay-Per-Click Advertising Strategy',
+        'Social Media Marketing Excellence',
+        'Content Marketing Strategy and Implementation',
+        'Email Marketing Automation and Personalization',
+        'Analytics and Performance Measurement',
+        'Emerging Trends and Future Opportunities'
       ],
       keyPoints: [
-        'Digital marketing uses electronic devices and internet to connect with customers',
-        'The global digital marketing market is expected to reach $786.2 billion by 2026',
-        'Core components include SEO, PPC, social media, content, and email marketing',
-        'Content marketing generates 3 times more leads than traditional marketing',
-        'Video content receives 1,200% more shares than text and image content',
-        'User-generated content increases engagement by 28%'
+        'Digital marketing market is projected to exceed $786.2 billion by 2026 with 13.9% CAGR',
+        'Content marketing generates 3x more leads than traditional marketing while costing 62% less',
+        'Video content receives 1,200% more shares than text and image content combined',
+        'Email marketing delivers $42 ROI for every dollar spent',
+        'User-generated content increases engagement by 28% compared to branded content',
+        'Quality Score directly impacts PPC ad positioning and cost-per-click',
+        'Voice search optimization is crucial as 50% of adults use voice search daily',
+        'Video marketing will account for 82% of internet traffic by 2025'
       ],
       concepts: [
-        'Digital Marketing',
         'Search Engine Optimization',
         'Pay-Per-Click Advertising',
         'Social Media Marketing',
         'Content Marketing',
-        'Email Marketing',
-        'Key Performance Indicators',
-        'Return on Investment'
+        'Email Marketing Automation',
+        'Customer Acquisition Cost',
+        'Return on Ad Spend',
+        'Quality Score',
+        'User-Generated Content',
+        'Marketing Attribution',
+        'Conversion Rate Optimization',
+        'Customer Lifetime Value'
       ],
       definitions: [
-        'SEO: The practice of optimizing websites to rank higher in search engine results pages',
-        'PPC: Advertising model where businesses pay for each click on their ads',
-        'Content Marketing: Strategy focused on creating valuable content to attract customers',
-        'KPIs: Key Performance Indicators used to measure marketing success'
+        'SEO: The practice of optimizing websites to rank higher in search engine results pages organically',
+        'PPC: Pay-Per-Click advertising that allows businesses to display targeted ads on search engines and social platforms',
+        'Quality Score: A metric determined by ad relevance, expected click-through rate, and landing page experience',
+        'CAC: Customer Acquisition Cost - the total cost of acquiring a new customer',
+        'ROAS: Return on Ad Spend - revenue generated for every dollar spent on advertising',
+        'LTV: Lifetime Value - the total revenue expected from a customer over their entire relationship'
       ],
       facts: [
-        'The global digital marketing market is expected to reach $786.2 billion by 2026',
-        'Content marketing costs 62% less than traditional marketing',
-        'Video marketing will account for 82% of all internet traffic by 2025',
+        'Global digital marketing market reached $350 billion in 2020',
+        'Google Ads accounts for approximately 73% of search ad revenue globally',
+        'Instagram engagement rates are highest with 1-2 daily posts',
+        'Blog posts of 1,600-2,400 words perform best for SEO',
+        'Personalization can increase click-through rates by 14% and conversions by 10%',
         '50% of adults use voice search daily'
       ],
       examples: [
-        'For example, Instagram requires 1-2 posts daily for optimal engagement',
-        'Such as Facebook, Instagram, and LinkedIn for social media marketing',
-        'Including keyword research, on-page optimization, and link building for SEO'
+        'For example, Instagram favors visual storytelling with 1-2 daily posts for optimal engagement',
+        'Such as Google Analytics 4 for comprehensive user behavior tracking',
+        'Including welcome series, abandoned cart recovery, and re-engagement campaigns for email automation',
+        'Like heat mapping, A/B testing, and cohort analysis for advanced user insights'
+      ],
+      sections: [
+        'Executive Summary covering market overview and growth projections',
+        'SEO fundamentals including keyword research and technical optimization',
+        'PPC strategy covering Google Ads and bid management',
+        'Social media marketing across multiple platforms with tailored strategies',
+        'Content marketing implementation with performance metrics',
+        'Email marketing automation and personalization techniques',
+        'Analytics and KPI measurement frameworks',
+        'Future trends including AI, voice search, and privacy regulations'
+      ],
+      vocabulary: [
+        'Optimization', 'Attribution', 'Segmentation', 'Personalization', 'Automation',
+        'Conversion', 'Engagement', 'Analytics', 'Targeting', 'Retargeting',
+        'Impressions', 'Click-through', 'Acquisition', 'Retention', 'Monetization'
+      ],
+      processes: [
+        'Step 1: Conduct comprehensive keyword research and competitive analysis',
+        'Step 2: Implement on-page SEO optimization including title tags and meta descriptions',
+        'Step 3: Create compelling ad copy and set up strategic bid management',
+        'Step 4: Develop platform-specific content strategies for each social media channel',
+        'Step 5: Set up email automation workflows and segmentation rules'
+      ],
+      statistics: [
+        '13.9% compound annual growth rate for digital marketing market',
+        '73% of search ad revenue comes from Google Ads',
+        '28% increase in engagement from user-generated content',
+        '62% lower cost per acquisition for content marketing',
+        '1,200% more shares for video content compared to text and images'
       ]
     };
   }
@@ -390,10 +584,11 @@ export class DocumentParser {
   static extractKeyTopics(content: ParsedContent): string[] {
     const topics: string[] = [];
     
-    // Extract from all content types
+    // Extract from all content types with prioritization
     topics.push(...content.headings);
     topics.push(...content.concepts);
     topics.push(...content.keyPoints);
+    topics.push(...content.vocabulary.slice(0, 5));
     
     // Remove duplicates and return
     return [...new Set(topics)];
