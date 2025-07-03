@@ -8,38 +8,47 @@ export const useAuth = () => {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout;
 
-    // Get initial session with timeout
+    // Get initial session with proper error handling
     const getSession = async () => {
       try {
-        // Add a timeout to prevent infinite loading
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 30000)
-        );
-
-        const { data: { session }, error } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]) as any;
+        console.log('Getting initial session...');
         
-        if (error) {
-          console.error('Error getting session:', error);
+        // Set a fallback timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
           if (mounted) {
+            console.log('Session check timeout - proceeding without session');
             setUser(null);
             setLoading(false);
           }
+        }, 10000); // 10 seconds fallback
+
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        // Clear the timeout since we got a response
+        clearTimeout(timeoutId);
+        
+        if (!mounted) return;
+
+        if (error) {
+          console.error('Error getting session:', error);
+          setUser(null);
+          setLoading(false);
           return;
         }
 
-        if (session?.user && mounted) {
+        if (session?.user) {
+          console.log('Session found, fetching profile...');
           await fetchUserProfile(session.user.id);
-        } else if (mounted) {
+        } else {
+          console.log('No session found');
           setUser(null);
           setLoading(false);
         }
       } catch (error) {
         console.error('Session error:', error);
+        clearTimeout(timeoutId);
         if (mounted) {
           setUser(null);
           setLoading(false);
@@ -73,6 +82,7 @@ export const useAuth = () => {
 
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
