@@ -106,21 +106,6 @@ const Quiz: React.FC = () => {
     }
   };
 
-  const validateQuizQuestion = (question: any): question is QuizQuestion => {
-    return (
-      question &&
-      typeof question === 'object' &&
-      typeof question.question === 'string' &&
-      Array.isArray(question.options) &&
-      question.options.length >= 2 &&
-      question.options.every((option: any) => typeof option === 'string') &&
-      typeof question.correct === 'number' &&
-      question.correct >= 0 &&
-      question.correct < question.options.length &&
-      typeof question.explanation === 'string'
-    );
-  };
-
   const generateQuizQuestions = async (courseData: Course) => {
     setGeneratingQuiz(true);
     try {
@@ -357,14 +342,7 @@ const Quiz: React.FC = () => {
         }
       ];
 
-      // Validate all questions before setting them
-      const validQuestions = courseQuestions.filter(validateQuizQuestion);
-      
-      if (validQuestions.length === 0) {
-        throw new Error('No valid quiz questions generated');
-      }
-
-      setQuestions(validQuestions);
+      setQuestions(courseQuestions);
     } catch (error) {
       console.error('Error generating quiz:', error);
       toast.error('Failed to generate quiz questions');
@@ -399,14 +377,9 @@ const Quiz: React.FC = () => {
   };
 
   const updateCourseProgress = async (answers: number[]) => {
-    if (!course || !user || questions.length === 0) return;
+    if (!course || !user) return;
 
-    // Safely calculate correct answers with validation
-    const correctAnswers = answers.filter((answer, index) => {
-      const question = questions[index];
-      return question && typeof question.correct === 'number' && answer === question.correct;
-    }).length;
-    
+    const correctAnswers = answers.filter((answer, index) => answer === questions[index].correct).length;
     const progressPercentage = Math.round((correctAnswers / questions.length) * 100);
 
     if (user.isGuest) {
@@ -490,13 +463,8 @@ const Quiz: React.FC = () => {
     );
   }
 
-  // Safely calculate correct answers with validation
-  const correctAnswers = userAnswers.filter((answer, index) => {
-    const question = questions[index];
-    return question && typeof question.correct === 'number' && answer === question.correct;
-  }).length;
-  
-  const scorePercentage = questions.length > 0 ? Math.round((correctAnswers / questions.length) * 100) : 0;
+  const correctAnswers = userAnswers.filter((answer, index) => answer === questions[index].correct).length;
+  const scorePercentage = Math.round((correctAnswers / questions.length) * 100);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F5F7FA] to-[#E1E8F0] pl-64 pt-16">
@@ -552,20 +520,20 @@ const Quiz: React.FC = () => {
                 transition={{ duration: 0.3 }}
               >
                 <h2 className="text-xl font-semibold text-[#2E3A59] mb-6">
-                  {questions[currentQuestion]?.question || 'Loading question...'}
+                  {questions[currentQuestion].question}
                 </h2>
 
                 <div className="space-y-3 mb-8">
-                  {questions[currentQuestion]?.options?.map((option, index) => (
+                  {questions[currentQuestion].options.map((option, index) => (
                     <motion.button
                       key={index}
                       onClick={() => handleAnswerSelect(index)}
                       disabled={showResult}
                       className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
                         showResult
-                          ? index === questions[currentQuestion]?.correct
+                          ? index === questions[currentQuestion].correct
                             ? 'border-green-500 bg-green-50 text-green-800'
-                            : index === selectedAnswer && index !== questions[currentQuestion]?.correct
+                            : index === selectedAnswer && index !== questions[currentQuestion].correct
                             ? 'border-red-500 bg-red-50 text-red-800'
                             : 'border-[#CBD5E1] bg-gray-50 text-[#BFC9D9]'
                           : selectedAnswer === index
@@ -577,18 +545,18 @@ const Quiz: React.FC = () => {
                     >
                       <div className="flex items-center space-x-3">
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          showResult && index === questions[currentQuestion]?.correct
+                          showResult && index === questions[currentQuestion].correct
                             ? 'border-green-500 bg-green-500'
-                            : showResult && index === selectedAnswer && index !== questions[currentQuestion]?.correct
+                            : showResult && index === selectedAnswer && index !== questions[currentQuestion].correct
                             ? 'border-red-500 bg-red-500'
                             : selectedAnswer === index
                             ? 'border-[#3CA7E0] bg-[#3CA7E0]'
                             : 'border-[#CBD5E1]'
                         }`}>
-                          {showResult && index === questions[currentQuestion]?.correct && (
+                          {showResult && index === questions[currentQuestion].correct && (
                             <CheckCircle className="h-4 w-4 text-white" />
                           )}
-                          {showResult && index === selectedAnswer && index !== questions[currentQuestion]?.correct && (
+                          {showResult && index === selectedAnswer && index !== questions[currentQuestion].correct && (
                             <XCircle className="h-4 w-4 text-white" />
                           )}
                           {!showResult && selectedAnswer === index && (
@@ -598,10 +566,10 @@ const Quiz: React.FC = () => {
                         <span className="font-medium">{option}</span>
                       </div>
                     </motion.button>
-                  )) || []}
+                  ))}
                 </div>
 
-                {showResult && questions[currentQuestion]?.explanation && (
+                {showResult && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}

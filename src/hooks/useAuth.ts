@@ -63,23 +63,15 @@ export const useAuth = () => {
 
         try {
           if (session?.user) {
-            await fetchUserProfile(session.user.id, event);
+            await fetchUserProfile(session.user.id);
           } else {
             setUser(null);
             setLoading(false);
           }
         } catch (error) {
           console.error('Auth state change error:', error);
-          // Only set user to null if it's not a profile-not-found error during SIGNED_IN event
-          const isProfileNotFoundDuringSignIn = 
-            error instanceof Error && 
-            error.message.includes('PGRST116') && 
-            event === 'SIGNED_IN';
-          
-          if (!isProfileNotFoundDuringSignIn) {
-            setUser(null);
-            setLoading(false);
-          }
+          setUser(null);
+          setLoading(false);
         }
       }
     );
@@ -91,7 +83,7 @@ export const useAuth = () => {
     };
   }, []);
 
-  const fetchUserProfile = async (userId: string, authEvent?: string) => {
+  const fetchUserProfile = async (userId: string) => {
     try {
       console.log('Fetching profile for user:', userId);
 
@@ -106,13 +98,6 @@ export const useAuth = () => {
 
         if (error.code === 'PGRST116') {
           console.log('Profile not found, user needs to complete registration');
-          
-          // If this is during a SIGNED_IN event, don't immediately set user to null
-          // as the profile might be created by the signUp function
-          if (authEvent === 'SIGNED_IN') {
-            console.log('Profile not found during SIGNED_IN event, waiting for profile creation...');
-            return;
-          }
         }
 
         setUser(null);
@@ -199,63 +184,34 @@ export const useAuth = () => {
       }
 
       if (data.user) {
-        // Create profile with retry logic
-        let profileCreated = false;
-        let retryCount = 0;
-        const maxRetries = 3;
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id,
+              email,
+              name,
+              jedi_rank: 'Youngling',
+              total_points: 0,
+              streak_days: 0,
+              last_activity: new Date().toISOString(),
+            },
+          ]);
 
-        while (!profileCreated && retryCount < maxRetries) {
-          try {
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .insert([
-                {
-                  id: data.user.id,
-                  email,
-                  name,
-                  jedi_rank: 'Youngling',
-                  total_points: 0,
-                  streak_days: 0,
-                  last_activity: new Date().toISOString(),
-                },
-              ]);
-
-            if (profileError) {
-              if (profileError.message.includes('duplicate key')) {
-                // Profile already exists, try to fetch it
-                console.log('Profile already exists, fetching...');
-                await fetchUserProfile(data.user.id);
-                return { success: true };
-              }
-              throw profileError;
-            }
-
-            profileCreated = true;
-            console.log('Profile created successfully');
-            
-            // Fetch the newly created profile
-            await fetchUserProfile(data.user.id);
-            
-          } catch (profileError: any) {
-            retryCount++;
-            console.error(`Profile creation attempt ${retryCount} failed:`, profileError);
-            
-            if (retryCount >= maxRetries) {
-              let userFriendlyMessage = 'Failed to create user profile. Please try again.';
-              
-              if (profileError.message.includes('duplicate key')) {
-                userFriendlyMessage = 'Account already exists. Please try signing in instead.';
-              }
-              
-              const enhancedError = new Error(userFriendlyMessage);
-              throw enhancedError;
-            }
-            
-            // Wait before retrying
-            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          let userFriendlyMessage = 'Failed to create user profile. Please try again.';
+          
+          if (profileError.message.includes('duplicate key')) {
+            userFriendlyMessage = 'Account already exists. Please try signing in instead.';
           }
+          
+          const enhancedError = new Error(userFriendlyMessage);
+          throw enhancedError;
         }
 
+        console.log('Sign up + profile creation successful');
+        await fetchUserProfile(data.user.id);
         return { success: true };
       }
       return { success: false, error: 'No user returned' };
