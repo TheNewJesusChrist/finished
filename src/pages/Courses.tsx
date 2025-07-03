@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Play, Trash2, Upload, FileText, Presentation, Calendar, BarChart3 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 
 const Courses: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,6 +54,10 @@ const Courses: React.FC = () => {
       console.error('Error deleting course:', error);
       toast.error('Failed to delete course');
     }
+  };
+
+  const startQuiz = (courseId: string) => {
+    navigate(`/quiz/${courseId}`);
   };
 
   const getFileIcon = (fileType: string) => {
@@ -198,6 +203,7 @@ const Courses: React.FC = () => {
 
                   <div className="flex space-x-2">
                     <motion.button
+                      onClick={() => startQuiz(course.id)}
                       className="flex-1 py-2 px-4 bg-[#3CA7E0] text-white rounded-lg font-medium hover:bg-[#5ED3F3] transition-all duration-200 flex items-center justify-center space-x-2"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
