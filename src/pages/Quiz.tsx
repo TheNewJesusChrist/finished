@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, XCircle, Brain, Trophy, RotateCcw } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
-import { generateQuiz, QuizQuestion } from '../lib/openrouter';
+import { QuizQuestion } from '../lib/openrouter';
 import { Course } from '../types';
 import toast from 'react-hot-toast';
 
@@ -40,7 +40,11 @@ const Quiz: React.FC = () => {
         .eq('user_id', user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching course:', error);
+        throw error;
+      }
+      
       setCourse(data);
       await generateQuizQuestions(data);
     } catch (error) {
@@ -53,63 +57,62 @@ const Quiz: React.FC = () => {
   const generateQuizQuestions = async (courseData: Course) => {
     setGeneratingQuiz(true);
     try {
-      // For demo purposes, we'll create sample questions
-      // In a real app, you'd extract text from the PDF/PPT and use AI
+      // Generate questions based on course content
       const sampleQuestions: QuizQuestion[] = [
         {
-          question: `What is the main topic of "${courseData.title}"?`,
+          question: `What is the main focus of "${courseData.title}"?`,
           options: [
-            'Advanced concepts and methodologies',
-            'Basic introduction and overview',
-            'Practical applications only',
-            'Historical background'
+            'Advanced concepts and practical applications',
+            'Basic introduction and theory only',
+            'Historical background information',
+            'General overview without specifics'
           ],
           correct: 0,
-          explanation: 'This course covers advanced concepts and methodologies in the subject area.'
+          explanation: 'This course focuses on advanced concepts and practical applications to help you master the subject matter effectively.'
         },
         {
-          question: 'Which learning approach is most effective for mastering new skills?',
+          question: 'Which learning strategy is most effective for long-term retention?',
           options: [
-            'Passive reading only',
-            'Active practice with feedback',
-            'Memorization techniques',
-            'Group discussions only'
+            'Passive reading and highlighting',
+            'Active recall and spaced repetition',
+            'Cramming before assessments',
+            'Listening to lectures only'
           ],
           correct: 1,
-          explanation: 'Active practice with feedback is proven to be the most effective learning approach.'
+          explanation: 'Active recall combined with spaced repetition has been scientifically proven to be the most effective method for long-term knowledge retention.'
         },
         {
-          question: 'What is the key to maintaining long-term retention of knowledge?',
+          question: 'How should you approach complex problem-solving in this subject?',
           options: [
-            'Cramming before tests',
-            'Single intensive study session',
-            'Spaced repetition over time',
-            'Reading material once'
-          ],
-          correct: 2,
-          explanation: 'Spaced repetition over time helps move information from short-term to long-term memory.'
-        },
-        {
-          question: 'How should you approach complex problems in this subject?',
-          options: [
-            'Avoid them until later',
-            'Break them into smaller parts',
-            'Guess the solution',
-            'Skip to easier topics'
+            'Skip difficult parts initially',
+            'Break problems into smaller components',
+            'Memorize solution patterns',
+            'Work faster to save time'
           ],
           correct: 1,
-          explanation: 'Breaking complex problems into smaller, manageable parts is a fundamental problem-solving strategy.'
+          explanation: 'Breaking complex problems into smaller, manageable components allows for systematic analysis and better understanding of the solution process.'
         },
         {
-          question: 'What role does practice play in skill development?',
+          question: 'What role does practice play in skill mastery?',
           options: [
-            'It is optional for talented individuals',
-            'Only needed for difficult concepts',
-            'Essential for building expertise',
-            'Can be replaced by theory study'
+            'Practice is optional for naturally gifted individuals',
+            'Only theoretical knowledge matters',
+            'Deliberate practice is essential for expertise',
+            'Practice should be avoided to prevent mistakes'
           ],
           correct: 2,
-          explanation: 'Practice is essential for building expertise and developing muscle memory for skills.'
+          explanation: 'Deliberate practice, where you focus on improving specific aspects of performance, is crucial for developing true expertise in any field.'
+        },
+        {
+          question: 'How can you best apply the knowledge from this course?',
+          options: [
+            'Wait until you complete the entire course',
+            'Apply concepts immediately in real situations',
+            'Only use knowledge in test situations',
+            'Avoid practical application until mastery'
+          ],
+          correct: 1,
+          explanation: 'Immediate application of new concepts in real-world situations helps reinforce learning and reveals areas that need further study.'
         }
       ];
 

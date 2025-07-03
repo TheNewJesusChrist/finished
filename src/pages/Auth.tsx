@@ -22,13 +22,17 @@ const Auth: React.FC = () => {
 
     try {
       if (isLogin) {
-        await signIn(formData.email, formData.password);
-        toast.success('Welcome back, young Jedi!');
-        navigate('/');
+        const result = await signIn(formData.email, formData.password);
+        if (result.success) {
+          toast.success('Welcome back, young Jedi!');
+          navigate('/courses');
+        }
       } else {
-        await signUp(formData.email, formData.password, formData.name);
-        toast.success('Your journey begins now!');
-        navigate('/jedi-assessment');
+        const result = await signUp(formData.email, formData.password, formData.name);
+        if (result.success) {
+          toast.success('Your journey begins now!');
+          navigate('/courses');
+        }
       }
     } catch (error: any) {
       toast.error(error.message || 'Something went wrong');

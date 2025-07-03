@@ -128,12 +128,14 @@ export const useAuth = () => {
       if (data?.session?.user) {
         console.log('Login successful:', data.session.user.id);
         await fetchUserProfile(data.session.user.id);
+        return { success: true };
       } else {
         console.log('Login returned no session');
         setUser(null);
         setLoading(false);
+        return { success: false, error: 'No session returned' };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign in error:', error);
       setUser(null);
       setLoading(false);
@@ -172,8 +174,10 @@ export const useAuth = () => {
 
         console.log('Sign up + profile creation successful');
         await fetchUserProfile(data.user.id);
+        return { success: true };
       }
-    } catch (error) {
+      return { success: false, error: 'No user returned' };
+    } catch (error: any) {
       console.error('Sign up error:', error);
       setUser(null);
       setLoading(false);
@@ -183,9 +187,16 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
+      console.log('Signing out...');
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
       setUser(null);
+      setLoading(false);
+      console.log('Sign out successful');
+      
+      // Force a page reload to clear any cached state
+      window.location.href = '/auth';
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
