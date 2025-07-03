@@ -10,12 +10,10 @@ export const useAuth = () => {
     let mounted = true;
     let timeoutId: NodeJS.Timeout;
 
-    // Get initial session with proper error handling
     const getSession = async () => {
       try {
         console.log('Getting initial session...');
-        
-        // Set a fallback timeout to prevent infinite loading
+
         timeoutId = setTimeout(() => {
           if (mounted) {
             console.log('Session check timeout - proceeding without session');
@@ -25,10 +23,9 @@ export const useAuth = () => {
         }, 10000); // 10 seconds fallback
 
         const { data: { session }, error } = await supabase.auth.getSession();
-        
-        // Clear the timeout since we got a response
+
         clearTimeout(timeoutId);
-        
+
         if (!mounted) return;
 
         if (error) {
@@ -58,7 +55,6 @@ export const useAuth = () => {
 
     getSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -90,7 +86,7 @@ export const useAuth = () => {
   const fetchUserProfile = async (userId: string) => {
     try {
       console.log('Fetching profile for user:', userId);
-      
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -99,12 +95,11 @@ export const useAuth = () => {
 
       if (error) {
         console.error('Error fetching user profile:', error);
-        
-        // If profile doesn't exist, user might need to complete registration
+
         if (error.code === 'PGRST116') {
           console.log('Profile not found, user needs to complete registration');
         }
-        
+
         setUser(null);
         setLoading(false);
         return;
@@ -123,12 +118,24 @@ export const useAuth = () => {
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
       if (error) throw error;
+
+      if (data?.session?.user) {
+        console.log('Login successful:', data.session.user.id);
+        await fetchUserProfile(data.session.user.id);
+      } else {
+        console.log('Login returned no session');
+        setUser(null);
+        setLoading(false);
+      }
     } catch (error) {
+      console.error('Sign in error:', error);
+      setUser(null);
       setLoading(false);
       throw error;
     }
@@ -144,7 +151,6 @@ export const useAuth = () => {
       if (error) throw error;
 
       if (data.user) {
-        // Create profile
         const { error: profileError } = await supabase
           .from('profiles')
           .insert([
@@ -158,13 +164,18 @@ export const useAuth = () => {
               last_activity: new Date().toISOString(),
             },
           ]);
-        
+
         if (profileError) {
           console.error('Profile creation error:', profileError);
           throw profileError;
         }
+
+        console.log('Sign up + profile creation successful');
+        await fetchUserProfile(data.user.id);
       }
     } catch (error) {
+      console.error('Sign up error:', error);
+      setUser(null);
       setLoading(false);
       throw error;
     }
