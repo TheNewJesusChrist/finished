@@ -15,6 +15,7 @@ const Header: React.FC = () => {
   const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [easterEggShown, setEasterEggShown] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const getRankColor = (rank: string) => {
     if (theme === 'dark') {
@@ -119,12 +120,27 @@ const Header: React.FC = () => {
   }, []);
 
   const handleSignOut = async () => {
+    if (isSigningOut) return; // Prevent multiple clicks
+    
+    setIsSigningOut(true);
+    
     try {
+      console.log('Header: Initiating sign out...');
       await signOut();
-      toast.success('May the Force be with you!');
+      
+      // Show success message
+      toast.success('You have been logged out. May the Force be with you!');
+      
     } catch (error: any) {
-      toast.error('Failed to sign out');
-      console.error('Sign out error:', error);
+      console.error('Header: Sign out error:', error);
+      toast.error('Failed to sign out properly, but you have been logged out.');
+      
+      // Even if there's an error, force redirect as a fallback
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 1000);
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
@@ -199,18 +215,26 @@ const Header: React.FC = () => {
                     </div>
                     <motion.button
                       onClick={handleSignOut}
+                      disabled={isSigningOut}
                       className={`
-                        p-2 rounded-lg transition-colors sw-button
+                        p-2 rounded-lg transition-colors sw-button relative
                         ${theme === 'dark' 
                           ? 'text-blue-200 hover:text-red-400' 
                           : 'text-gray-600 hover:text-red-500'
                         }
+                        ${isSigningOut ? 'opacity-50 cursor-not-allowed' : ''}
                       `}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
+                      whileHover={!isSigningOut ? { scale: 1.1 } : {}}
+                      whileTap={!isSigningOut ? { scale: 0.9 } : {}}
                       title="Sign Out"
                     >
-                      <LogOut className="h-4 w-4" />
+                      {isSigningOut ? (
+                        <div className={`animate-spin rounded-full h-4 w-4 border-b-2 ${
+                          theme === 'dark' ? 'border-blue-400' : 'border-gray-600'
+                        }`}></div>
+                      ) : (
+                        <LogOut className="h-4 w-4" />
+                      )}
                     </motion.button>
                   </div>
                 </motion.div>

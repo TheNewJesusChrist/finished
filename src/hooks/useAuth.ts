@@ -62,11 +62,15 @@ export const useAuth = () => {
         console.log('Auth state change:', event, session?.user?.id);
 
         try {
-          if (session?.user) {
-            await fetchUserProfile(session.user.id);
-          } else {
+          if (event === 'SIGNED_OUT' || !session?.user) {
+            console.log('User signed out or session ended');
             setUser(null);
             setLoading(false);
+            return;
+          }
+
+          if (session?.user) {
+            await fetchUserProfile(session.user.id);
           }
         } catch (error) {
           console.error('Auth state change error:', error);
@@ -246,28 +250,53 @@ export const useAuth = () => {
   const signOut = async () => {
     try {
       console.log('Signing out...');
+      setLoading(true);
       
       // If it's a guest user, just clear the state
       if (user?.isGuest) {
+        console.log('Guest sign out - clearing state');
         setUser(null);
         setLoading(false);
-        console.log('Guest sign out successful');
-        window.location.href = '/auth';
+        
+        // Use window.location for immediate redirect
+        setTimeout(() => {
+          window.location.href = '/auth';
+        }, 100);
         return;
       }
       
       // For regular users, sign out from Supabase
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase sign out error:', error);
+        throw error;
+      }
       
+      // Clear user state immediately
       setUser(null);
       setLoading(false);
+      
       console.log('Sign out successful');
       
-      // Force a page reload to clear any cached state
-      window.location.href = '/auth';
+      // Clear any cached data
+      localStorage.removeItem('supabase.auth.token');
+      
+      // Force redirect to auth page
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 100);
+      
     } catch (error) {
       console.error('Sign out error:', error);
+      
+      // Even if there's an error, clear the user state and redirect
+      setUser(null);
+      setLoading(false);
+      
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 100);
+      
       throw error;
     }
   };
