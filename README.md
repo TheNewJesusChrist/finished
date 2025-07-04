@@ -71,7 +71,7 @@ You’ll unlock a pop-up with a hidden Jedi avatar and message — a tribute to 
 
 ## 🌐 Live Demo
 
-- 🔗 [Visit the Website](https://force-skilltracker.netlify.app/auth) 
+- 🔗 [Visit the Website](https://force-skilltracker.netlify.app) 
 ---
 
 ## 👾 How Quiz Generation Works
