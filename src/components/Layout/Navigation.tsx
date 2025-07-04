@@ -13,7 +13,7 @@ const Navigation: React.FC = () => {
   ];
 
   return (
-    <nav className="bg-[#F5F7FA] border-r border-[#CBD5E1] w-64 h-full fixed left-0 top-16 z-40">
+    <nav className="bg-gradient-to-b from-gray-900 via-blue-900 to-gray-900 border-r border-blue-500/30 w-64 h-full fixed left-0 top-16 z-40 space-bg">
       <div className="p-4">
         <ul className="space-y-2">
           {navItems.map((item, index) => (
@@ -26,17 +26,17 @@ const Navigation: React.FC = () => {
               <NavLink
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                  `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 sw-button ${
                     isActive
-                      ? 'bg-[#3CA7E0] text-white shadow-lg shadow-[#AEEBF9]/30'
-                      : 'text-[#2E3A59] hover:bg-[#5ED3F3]/20 hover:text-[#3CA7E0]'
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg neon-glow'
+                      : 'text-blue-200 hover:text-white'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : ''}`} />
-                    <span className="font-medium">{item.label}</span>
+                    <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-blue-300'}`} />
+                    <span className="font-medium orbitron">{item.label}</span>
                   </>
                 )}
               </NavLink>

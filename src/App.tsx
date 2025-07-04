@@ -21,10 +21,10 @@ function AppContent() {
   // Show loading spinner with timeout fallback
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center">
+      <div className="min-h-screen space-bg flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3CA7E0] mx-auto mb-4"></div>
-          <p className="text-[#BFC9D9] text-sm">Loading your Jedi training...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+          <p className="text-blue-200 text-sm share-tech">Loading your Jedi training...</p>
         </div>
       </div>
     );
@@ -32,7 +32,7 @@ function AppContent() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-[#F5F7FA]">
+      <div className="min-h-screen space-bg">
         <Header />
         {user && <Navigation />}
         
@@ -66,9 +66,10 @@ function AppContent() {
           toastOptions={{
             duration: 4000,
             style: {
-              background: 'white',
-              color: '#2E3A59',
-              border: '1px solid #CBD5E1',
+              background: 'linear-gradient(135deg, #1e293b, #334155)',
+              color: '#e2e8f0',
+              border: '1px solid #3b82f6',
+              boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)',
             },
           }}
         />

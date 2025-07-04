@@ -1,18 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --jedi-blue: #00BFFF;
+  --sith-red: #FF0000;
+  --force-green: #00FF7F;
+  --space-dark: #0A0A0F;
+  --space-blue: #1A1A2E;
+  --neon-glow: 0 0 10px currentColor;
+}
+
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Orbitron', 'Share Tech Mono', monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: linear-gradient(135deg, var(--space-dark) 0%, var(--space-blue) 100%);
+  min-height: 100vh;
 }
 
 .orbitron {
   font-family: 'Orbitron', monospace;
+}
+
+.share-tech {
+  font-family: 'Share Tech Mono', monospace;
 }
 
 /* Custom scrollbar */
@@ -21,28 +34,139 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--space-dark);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3CA7E0;
+  background: var(--jedi-blue);
   border-radius: 4px;
+  box-shadow: var(--neon-glow);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #5ED3F3;
+  background: var(--force-green);
 }
 
-/* Glow effects */
-.glow-blue {
-  box-shadow: 0 0 10px rgba(60, 167, 224, 0.3);
+/* Lightsaber glow effects */
+.lightsaber-glow {
+  filter: drop-shadow(0 0 5px var(--jedi-blue)) drop-shadow(0 0 10px var(--jedi-blue));
+  transition: all 0.3s ease;
 }
 
-.glow-cyan {
-  box-shadow: 0 0 10px rgba(94, 211, 243, 0.3);
+.lightsaber-glow:hover {
+  filter: drop-shadow(0 0 8px var(--jedi-blue)) drop-shadow(0 0 15px var(--jedi-blue)) drop-shadow(0 0 20px var(--jedi-blue));
+  transform: scale(1.1);
 }
 
-/* Animations */
+/* BB-8 rolling animation */
+@keyframes bb8-roll {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes bb8-head-tilt {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+.bb8-body {
+  animation: bb8-roll 8s linear infinite;
+}
+
+.bb8-head {
+  animation: bb8-head-tilt 3s ease-in-out infinite;
+}
+
+/* Star Wars button effects */
+.sw-button {
+  background: linear-gradient(45deg, var(--space-dark), var(--space-blue));
+  border: 1px solid var(--jedi-blue);
+  color: var(--jedi-blue);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.sw-button:hover {
+  background: linear-gradient(45deg, var(--space-blue), var(--jedi-blue));
+  color: white;
+  box-shadow: 0 0 20px var(--jedi-blue);
+  transform: translateY(-2px);
+}
+
+.sw-button:hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: lightsaber-sweep 0.6s ease-in-out;
+}
+
+@keyframes lightsaber-sweep {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Neon text effects */
+.neon-text {
+  color: var(--jedi-blue);
+  text-shadow: 
+    0 0 5px var(--jedi-blue),
+    0 0 10px var(--jedi-blue),
+    0 0 15px var(--jedi-blue);
+}
+
+.neon-text-green {
+  color: var(--force-green);
+  text-shadow: 
+    0 0 5px var(--force-green),
+    0 0 10px var(--force-green),
+    0 0 15px var(--force-green);
+}
+
+.neon-text-red {
+  color: var(--sith-red);
+  text-shadow: 
+    0 0 5px var(--sith-red),
+    0 0 10px var(--sith-red),
+    0 0 15px var(--sith-red);
+}
+
+/* Space background pattern */
+.space-bg {
+  background: 
+    radial-gradient(2px 2px at 20px 30px, #eee, transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(2px 2px at 160px 30px, #ddd, transparent),
+    linear-gradient(135deg, var(--space-dark) 0%, var(--space-blue) 100%);
+  background-repeat: repeat;
+  background-size: 200px 100px;
+}
+
+/* Hologram effect */
+.hologram {
+  background: linear-gradient(45deg, transparent 30%, rgba(0,191,255,0.1) 50%, transparent 70%);
+  border: 1px solid var(--jedi-blue);
+  box-shadow: inset 0 0 20px rgba(0,191,255,0.2);
+  backdrop-filter: blur(1px);
+}
+
+/* Force lightning effect for errors */
+@keyframes force-lightning {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.force-lightning {
+  animation: force-lightning 0.1s infinite;
+}
+
+/* Floating animation */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
@@ -52,11 +176,31 @@ body {
   animation: float 3s ease-in-out infinite;
 }
 
+/* Pulse glow */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 5px rgba(60, 167, 224, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(60, 167, 224, 0.6); }
+  0%, 100% { box-shadow: 0 0 5px var(--jedi-blue); }
+  50% { box-shadow: 0 0 20px var(--jedi-blue), 0 0 30px var(--jedi-blue); }
 }
 
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Progress bar lightsaber effect */
+.progress-lightsaber {
+  background: linear-gradient(90deg, var(--jedi-blue), var(--force-green));
+  box-shadow: 0 0 10px var(--jedi-blue);
+  position: relative;
+}
+
+.progress-lightsaber::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: white;
+  box-shadow: 0 0 8px white;
+  border-radius: 2px;
 }
