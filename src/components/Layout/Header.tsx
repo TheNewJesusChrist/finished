@@ -2,21 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, LogOut, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../hooks/useTheme';
+import ThemeToggle from './ThemeToggle';
 import toast from 'react-hot-toast';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
+  const { theme } = useTheme();
   const [clickCount, setClickCount] = useState(0);
   const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
 
   const getRankColor = (rank: string) => {
-    switch (rank) {
-      case 'Youngling': return 'text-gray-400';
-      case 'Padawan': return 'neon-text';
-      case 'Knight': return 'neon-text-green';
-      case 'Master': return 'text-yellow-400';
-      default: return 'text-gray-400';
+    if (theme === 'dark') {
+      switch (rank) {
+        case 'Youngling': return 'text-gray-400';
+        case 'Padawan': return 'neon-text';
+        case 'Knight': return 'neon-text-green';
+        case 'Master': return 'text-yellow-400';
+        default: return 'text-gray-400';
+      }
+    } else {
+      switch (rank) {
+        case 'Youngling': return 'text-gray-500';
+        case 'Padawan': return 'text-blue-600';
+        case 'Knight': return 'text-green-600';
+        case 'Master': return 'text-yellow-600';
+        default: return 'text-gray-500';
+      }
     }
   };
 
@@ -34,7 +47,9 @@ const Header: React.FC = () => {
 
   const handleLogoClick = () => {
     setClickCount(prev => prev + 1);
-    playLightsaberSound();
+    if (theme === 'dark') {
+      playLightsaberSound();
+    }
     
     if (clickCount === 4) { // 5th click (0-indexed)
       setShowEasterEgg(true);
@@ -49,7 +64,7 @@ const Header: React.FC = () => {
 
   const handleLogoHover = () => {
     setIsHovering(true);
-    if (clickCount === 0) { // Only play on first hover to avoid spam
+    if (clickCount === 0 && theme === 'dark') { // Only play on first hover to avoid spam
       playLightsaberSound();
     }
   };
@@ -80,7 +95,13 @@ const Header: React.FC = () => {
 
   return (
     <>
-      <header className="bg-gradient-to-r from-gray-900 via-blue-900 to-gray-900 border-b border-blue-500/30 sticky top-0 z-50 backdrop-blur-md space-bg">
+      <header className={`
+        sticky top-0 z-50 backdrop-blur-md border-b transition-all duration-300
+        ${theme === 'dark' 
+          ? 'bg-gradient-to-r from-gray-900 via-blue-900 to-gray-900 border-blue-500/30 space-bg' 
+          : 'bg-white/80 border-gray-200'
+        }
+      `}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <motion.div 
@@ -105,40 +126,61 @@ const Header: React.FC = () => {
                   className="h-8 w-8"
                 />
               </motion.div>
-              <span className="text-xl font-bold neon-text orbitron">
+              <span className={`
+                text-xl font-bold orbitron transition-colors duration-300
+                ${theme === 'dark' ? 'neon-text' : 'text-gray-900'}
+              `}>
                 Force Skill Tracker
               </span>
             </motion.div>
 
-            {user && (
-              <motion.div 
-                className="flex items-center space-x-4"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="text-right">
-                  <p className="text-sm text-blue-200 font-medium">{user.name}</p>
-                  <p className={`text-xs font-semibold ${getRankColor(user.jedi_rank)}`}>
-                    {user.jedi_rank}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center pulse-glow">
-                    <User className="h-4 w-4 text-white" />
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
+              
+              {user && (
+                <motion.div 
+                  className="flex items-center space-x-4"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <div className="text-right">
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-blue-200' : 'text-gray-700'}`}>
+                      {user.name}
+                    </p>
+                    <p className={`text-xs font-semibold ${getRankColor(user.jedi_rank)}`}>
+                      {user.jedi_rank}
+                    </p>
                   </div>
-                  <motion.button
-                    onClick={handleSignOut}
-                    className="p-2 text-blue-200 hover:text-red-400 transition-colors sw-button rounded-lg"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    title="Sign Out"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </motion.button>
-                </div>
-              </motion.div>
-            )}
+                  <div className="flex items-center space-x-2">
+                    <div className={`
+                      w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300
+                      ${theme === 'dark' 
+                        ? 'bg-gradient-to-br from-blue-500 to-cyan-400 pulse-glow' 
+                        : 'bg-gradient-to-br from-indigo-500 to-purple-500'
+                      }
+                    `}>
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                    <motion.button
+                      onClick={handleSignOut}
+                      className={`
+                        p-2 rounded-lg transition-colors sw-button
+                        ${theme === 'dark' 
+                          ? 'text-blue-200 hover:text-red-400' 
+                          : 'text-gray-600 hover:text-red-500'
+                        }
+                      `}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      title="Sign Out"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -165,29 +207,50 @@ const Header: React.FC = () => {
                 duration: 0.8,
                 y: { repeat: Infinity, duration: 2 }
               }}
-              className="relative bg-gradient-to-br from-blue-900 via-purple-900 to-blue-900 rounded-2xl p-8 shadow-2xl max-w-md mx-auto hologram"
+              className={`
+                relative rounded-2xl p-8 shadow-2xl max-w-md mx-auto transition-all duration-300
+                ${theme === 'dark' 
+                  ? 'bg-gradient-to-br from-blue-900 via-purple-900 to-blue-900 hologram' 
+                  : 'bg-white border-2 border-indigo-200'
+                }
+              `}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close button */}
               <motion.button
                 onClick={closeEasterEgg}
-                className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
+                className={`
+                  absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors
+                  ${theme === 'dark' 
+                    ? 'bg-white/20 hover:bg-white/30 text-white' 
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                  }
+                `}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <X className="h-4 w-4 text-white" />
+                <X className="h-4 w-4" />
               </motion.button>
 
-              <div className="text-center text-white">
+              <div className={`text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {/* Custom Avatar */}
                 <motion.div
-                  className="w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden border-4 border-blue-400/50 shadow-xl"
+                  className={`
+                    w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden border-4 shadow-xl
+                    ${theme === 'dark' ? 'border-blue-400/50' : 'border-indigo-300'}
+                  `}
                   animate={{ 
-                    boxShadow: [
-                      '0 0 20px rgba(59, 130, 246, 0.5)',
-                      '0 0 40px rgba(59, 130, 246, 0.8)',
-                      '0 0 20px rgba(59, 130, 246, 0.5)'
-                    ]
+                    boxShadow: theme === 'dark' 
+                      ? [
+                          '0 0 20px rgba(59, 130, 246, 0.5)',
+                          '0 0 40px rgba(59, 130, 246, 0.8)',
+                          '0 0 20px rgba(59, 130, 246, 0.5)'
+                        ]
+                      : [
+                          '0 4px 12px rgba(99, 102, 241, 0.3)',
+                          '0 8px 24px rgba(99, 102, 241, 0.5)',
+                          '0 4px 12px rgba(99, 102, 241, 0.3)'
+                        ]
                   }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
@@ -199,7 +262,7 @@ const Header: React.FC = () => {
                       // Fallback to emoji if image fails to load
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
-                      target.parentElement!.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-6xl">🤖</div>';
+                      target.parentElement!.innerHTML = `<div class="w-full h-full ${theme === 'dark' ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-gradient-to-br from-indigo-500 to-purple-500'} flex items-center justify-center text-6xl">🤖</div>`;
                     }}
                   />
                 </motion.div>
@@ -209,23 +272,35 @@ const Header: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
                 >
-                  <h2 className="text-2xl font-bold mb-3 neon-text orbitron">
+                  <h2 className={`
+                    text-2xl font-bold mb-3 orbitron
+                    ${theme === 'dark' ? 'neon-text' : 'text-indigo-600'}
+                  `}>
                     🎉 Surprise Jedi! 🎉
                   </h2>
-                  <p className="text-lg mb-2 font-semibold neon-text-green">
+                  <p className={`
+                    text-lg mb-2 font-semibold
+                    ${theme === 'dark' ? 'neon-text-green' : 'text-green-600'}
+                  `}>
                     You've unlocked a secret!
                   </p>
-                  <p className="text-sm opacity-90 mb-4 share-tech">
+                  <p className={`
+                    text-sm opacity-90 mb-4 share-tech
+                    ${theme === 'dark' ? 'text-blue-200' : 'text-gray-600'}
+                  `}>
                     "The Force is strong with those who seek hidden knowledge."
                   </p>
-                  <p className="text-xs opacity-75 share-tech">
+                  <p className={`
+                    text-xs opacity-75 share-tech
+                    ${theme === 'dark' ? 'text-blue-300' : 'text-gray-500'}
+                  `}>
                     - Master of Secrets
                   </p>
                 </motion.div>
               </div>
               
-              {/* Animated sparkles around the avatar */}
-              {[...Array(6)].map((_, i) => (
+              {/* Animated sparkles around the avatar - only in dark theme */}
+              {theme === 'dark' && [...Array(6)].map((_, i) => (
                 <motion.div
                   key={i}
                   className="absolute text-blue-300 text-2xl"
@@ -252,7 +327,10 @@ const Header: React.FC = () => {
               {[...Array(8)].map((_, i) => (
                 <motion.div
                   key={i}
-                  className="absolute w-2 h-2 bg-blue-400 rounded-full"
+                  className={`
+                    absolute w-2 h-2 rounded-full
+                    ${theme === 'dark' ? 'bg-blue-400' : 'bg-indigo-400'}
+                  `}
                   style={{
                     left: `${10 + Math.random() * 80}%`,
                     top: `${10 + Math.random() * 80}%`,
