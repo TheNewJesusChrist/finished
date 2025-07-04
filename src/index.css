@@ -13,12 +13,12 @@
   --neon-glow: 0 0 10px currentColor;
   
   /* Light theme variables */
-  --light-bg: #f9fafb;
+  --light-bg: #f8fafc;
   --light-surface: #ffffff;
-  --light-text: #111827;
-  --light-text-secondary: #6b7280;
-  --light-accent: #6366f1;
-  --light-border: #e5e7eb;
+  --light-text: #0f172a;
+  --light-text-secondary: #475569;
+  --light-accent: #2563eb;
+  --light-border: #e2e8f0;
 }
 
 /* Base styles */
@@ -37,7 +37,7 @@ body {
 
 /* Light theme styles */
 .light body {
-  background: linear-gradient(135deg, var(--light-bg) 0%, #f3f4f6 100%);
+  background: linear-gradient(135deg, var(--light-bg) 0%, #f1f5f9 100%);
   color: var(--light-text);
 }
 
@@ -83,7 +83,7 @@ body {
 }
 
 .light ::-webkit-scrollbar-thumb:hover {
-  background: #4f46e5;
+  background: #1d4ed8;
 }
 
 /* Lightsaber glow effects - Dark theme only */
@@ -100,7 +100,7 @@ body {
 /* Light theme logo hover */
 .light .lightsaber-glow:hover {
   transform: scale(1.1);
-  filter: drop-shadow(0 2px 4px rgba(99, 102, 241, 0.3));
+  filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.3));
 }
 
 /* BB-8 rolling animation */
@@ -150,9 +150,9 @@ body {
 }
 
 .light .sw-button:hover {
-  background: linear-gradient(45deg, var(--light-accent), #4f46e5);
+  background: linear-gradient(45deg, var(--light-accent), #1d4ed8);
   color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
   transform: translateY(-2px);
 }
 
@@ -284,8 +284,8 @@ body {
 }
 
 @keyframes pulse-glow-light {
-  0%, 100% { box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2); }
-  50% { box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
+  0%, 100% { box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2); }
+  50% { box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
 }
 
 /* Progress bar lightsaber effect - Dark theme */
@@ -309,7 +309,7 @@ body {
 
 /* Light theme progress bar */
 .light .progress-lightsaber {
-  background: linear-gradient(90deg, var(--light-accent), #4f46e5);
+  background: linear-gradient(90deg, var(--light-accent), #1d4ed8);
   position: relative;
 }
 
@@ -349,7 +349,7 @@ body {
 
 .light input:focus, .light textarea:focus {
   border-color: var(--light-accent);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
 /* Placeholder text */

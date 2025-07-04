@@ -93,13 +93,19 @@ const Auth: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 ${theme === 'dark' ? 'space-bg' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen flex items-center justify-center p-4 ${
+      theme === 'dark' 
+        ? 'space-bg' 
+        : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'
+    }`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
         className={`rounded-2xl p-8 w-full max-w-md transition-all duration-300 ${
-          theme === 'dark' ? 'hologram' : 'bg-white shadow-xl border border-gray-200'
+          theme === 'dark' 
+            ? 'hologram' 
+            : 'bg-white/95 backdrop-blur-sm shadow-2xl border border-slate-200'
         }`}
       >
         <div className="text-center mb-8">
@@ -111,16 +117,20 @@ const Auth: React.FC = () => {
               w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300
               ${theme === 'dark' 
                 ? 'bg-gradient-to-br from-blue-500 to-cyan-400 pulse-glow' 
-                : 'bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg'
+                : 'bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/25'
               }
             `}
           >
             <img src="/starwars/lightsaber.svg" alt="Lightsaber" className="h-10 w-10" />
           </motion.div>
-          <h2 className={`text-2xl font-bold mb-2 orbitron ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          <h2 className={`text-2xl font-bold mb-2 orbitron ${
+            theme === 'dark' ? 'text-white' : 'text-slate-900'
+          }`}>
             {isLogin ? 'Welcome Back' : 'Begin Your Journey'}
           </h2>
-          <p className={`share-tech ${theme === 'dark' ? 'text-blue-200' : 'text-gray-600'}`}>
+          <p className={`share-tech ${
+            theme === 'dark' ? 'text-blue-200' : 'text-slate-600'
+          }`}>
             {isLogin ? 'Continue your path to mastery' : 'Become a Jedi Master'}
           </p>
         </div>
@@ -137,15 +147,23 @@ const Auth: React.FC = () => {
               }
             `}
           >
-            <AlertCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`} />
+            <AlertCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+              theme === 'dark' ? 'text-red-400' : 'text-red-600'
+            }`} />
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-red-300' : 'text-red-700'}`}>{error}</p>
+              <p className={`text-sm ${
+                theme === 'dark' ? 'text-red-300' : 'text-red-800'
+              }`}>{error}</p>
               {isLogin && error.includes('incorrect') && (
-                <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                <p className={`text-xs mt-1 ${
+                  theme === 'dark' ? 'text-red-400' : 'text-red-700'
+                }`}>
                   Don't have an account?{' '}
                   <button
                     onClick={toggleMode}
-                    className={`underline hover:no-underline ${theme === 'dark' ? 'neon-text' : 'text-indigo-600'}`}
+                    className={`underline hover:no-underline font-medium ${
+                      theme === 'dark' ? 'neon-text' : 'text-blue-600 hover:text-blue-800'
+                    }`}
                   >
                     Create one here
                   </button>
@@ -163,11 +181,15 @@ const Auth: React.FC = () => {
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <label className={`block text-sm font-medium mb-2 orbitron ${theme === 'dark' ? 'text-blue-200' : 'text-gray-700'}`}>
+              <label className={`block text-sm font-medium mb-2 orbitron ${
+                theme === 'dark' ? 'text-blue-200' : 'text-slate-700'
+              }`}>
                 Full Name
               </label>
               <div className="relative">
-                <User className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${theme === 'dark' ? 'text-blue-400' : 'text-gray-400'}`} />
+                <User className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${
+                  theme === 'dark' ? 'text-blue-400' : 'text-slate-400'
+                }`} />
                 <input
                   type="text"
                   name="name"
@@ -177,7 +199,7 @@ const Auth: React.FC = () => {
                     w-full pl-10 pr-4 py-3 rounded-lg outline-none transition-all duration-200 share-tech
                     ${theme === 'dark' 
                       ? 'bg-gray-900/50 border border-blue-500/30 focus:ring-2 focus:ring-blue-400 focus:border-transparent text-white' 
-                      : 'bg-white border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900'
+                      : 'bg-white border-2 border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 placeholder-slate-500'
                     }
                   `}
                   placeholder="Enter your full name"
@@ -188,11 +210,15 @@ const Auth: React.FC = () => {
           )}
 
           <div>
-            <label className={`block text-sm font-medium mb-2 orbitron ${theme === 'dark' ? 'text-blue-200' : 'text-gray-700'}`}>
+            <label className={`block text-sm font-medium mb-2 orbitron ${
+              theme === 'dark' ? 'text-blue-200' : 'text-slate-700'
+            }`}>
               Email Address
             </label>
             <div className="relative">
-              <Mail className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${theme === 'dark' ? 'text-blue-400' : 'text-gray-400'}`} />
+              <Mail className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${
+                theme === 'dark' ? 'text-blue-400' : 'text-slate-400'
+              }`} />
               <input
                 type="email"
                 name="email"
@@ -202,7 +228,7 @@ const Auth: React.FC = () => {
                   w-full pl-10 pr-4 py-3 rounded-lg outline-none transition-all duration-200 share-tech
                   ${theme === 'dark' 
                     ? 'bg-gray-900/50 border border-blue-500/30 focus:ring-2 focus:ring-blue-400 focus:border-transparent text-white' 
-                    : 'bg-white border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900'
+                    : 'bg-white border-2 border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 placeholder-slate-500'
                   }
                 `}
                 placeholder="Enter your email"
@@ -212,11 +238,15 @@ const Auth: React.FC = () => {
           </div>
 
           <div>
-            <label className={`block text-sm font-medium mb-2 orbitron ${theme === 'dark' ? 'text-blue-200' : 'text-gray-700'}`}>
+            <label className={`block text-sm font-medium mb-2 orbitron ${
+              theme === 'dark' ? 'text-blue-200' : 'text-slate-700'
+            }`}>
               Password
             </label>
             <div className="relative">
-              <Lock className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${theme === 'dark' ? 'text-blue-400' : 'text-gray-400'}`} />
+              <Lock className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${
+                theme === 'dark' ? 'text-blue-400' : 'text-slate-400'
+              }`} />
               <input
                 type="password"
                 name="password"
@@ -226,7 +256,7 @@ const Auth: React.FC = () => {
                   w-full pl-10 pr-4 py-3 rounded-lg outline-none transition-all duration-200 share-tech
                   ${theme === 'dark' 
                     ? 'bg-gray-900/50 border border-blue-500/30 focus:ring-2 focus:ring-blue-400 focus:border-transparent text-white' 
-                    : 'bg-white border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900'
+                    : 'bg-white border-2 border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 placeholder-slate-500'
                   }
                 `}
                 placeholder="Enter your password"
@@ -235,7 +265,9 @@ const Auth: React.FC = () => {
               />
             </div>
             {!isLogin && (
-              <p className={`text-xs mt-1 share-tech ${theme === 'dark' ? 'text-blue-300' : 'text-gray-500'}`}>
+              <p className={`text-xs mt-1 share-tech ${
+                theme === 'dark' ? 'text-blue-300' : 'text-slate-500'
+              }`}>
                 Password must be at least 6 characters long
               </p>
             )}
@@ -244,13 +276,21 @@ const Auth: React.FC = () => {
           <motion.button
             type="submit"
             disabled={loading}
-            className="w-full py-3 sw-button rounded-lg font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed orbitron"
+            className={`
+              w-full py-3 rounded-lg font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed orbitron
+              ${theme === 'dark'
+                ? 'sw-button'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/25 transform hover:scale-[1.02]'
+              }
+            `}
             whileHover={{ scale: loading ? 1 : 1.02 }}
             whileTap={{ scale: loading ? 1 : 0.98 }}
           >
             {loading ? (
               <div className="flex items-center justify-center">
-                <div className={`animate-spin rounded-full h-5 w-5 border-b-2 mr-2 ${theme === 'dark' ? 'border-blue-400' : 'border-indigo-500'}`}></div>
+                <div className={`animate-spin rounded-full h-5 w-5 border-b-2 mr-2 ${
+                  theme === 'dark' ? 'border-blue-400' : 'border-white'
+                }`}></div>
                 Processing...
               </div>
             ) : (
@@ -263,10 +303,16 @@ const Auth: React.FC = () => {
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className={`w-full border-t ${theme === 'dark' ? 'border-blue-500/30' : 'border-gray-300'}`}></div>
+              <div className={`w-full border-t ${
+                theme === 'dark' ? 'border-blue-500/30' : 'border-slate-300'
+              }`}></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className={`px-2 share-tech ${theme === 'dark' ? 'bg-gray-900 text-blue-300' : 'bg-white text-gray-500'}`}>or</span>
+              <span className={`px-2 share-tech ${
+                theme === 'dark' 
+                  ? 'bg-gray-900 text-blue-300' 
+                  : 'bg-white text-slate-500'
+              }`}>or</span>
             </div>
           </div>
           
@@ -278,7 +324,7 @@ const Auth: React.FC = () => {
               disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 orbitron
               ${theme === 'dark' 
                 ? 'bg-gradient-to-r from-green-600 to-emerald-500 text-white hover:from-green-500 hover:to-emerald-400' 
-                : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-400 hover:to-teal-400'
+                : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:shadow-emerald-500/25 transform hover:scale-[1.02]'
               }
             `}
             whileHover={{ scale: loading ? 1 : 1.02 }}
@@ -288,18 +334,26 @@ const Auth: React.FC = () => {
             <span>Continue as Guest</span>
           </motion.button>
           
-          <p className={`text-xs text-center mt-2 share-tech ${theme === 'dark' ? 'text-blue-300' : 'text-gray-500'}`}>
+          <p className={`text-xs text-center mt-2 share-tech ${
+            theme === 'dark' ? 'text-blue-300' : 'text-slate-500'
+          }`}>
             Explore all features without creating an account
           </p>
         </div>
 
         <div className="mt-6 text-center">
-          <p className={`text-sm share-tech ${theme === 'dark' ? 'text-blue-300' : 'text-gray-600'}`}>
+          <p className={`text-sm share-tech ${
+            theme === 'dark' ? 'text-blue-300' : 'text-slate-600'
+          }`}>
             {isLogin ? "Don't have an account?" : "Already have an account?"}
           </p>
           <button
             onClick={toggleMode}
-            className={`text-sm font-medium transition-colors duration-200 orbitron ${theme === 'dark' ? 'neon-text' : 'text-indigo-600 hover:text-indigo-500'}`}
+            className={`text-sm font-medium transition-colors duration-200 orbitron ${
+              theme === 'dark' 
+                ? 'neon-text' 
+                : 'text-blue-600 hover:text-blue-800 font-semibold'
+            }`}
           >
             {isLogin ? 'Create one here' : 'Sign in here'}
           </button>
