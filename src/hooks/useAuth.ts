@@ -69,7 +69,8 @@ export const useAuth = () => {
             return;
           }
 
-          if (session?.user) {
+          if (event === 'SIGNED_IN' && session?.user) {
+            console.log('User signed in, fetching profile...');
             await fetchUserProfile(session.user.id);
           }
         } catch (error) {
@@ -120,14 +121,19 @@ export const useAuth = () => {
   };
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true);
     try {
+      console.log('Starting sign in process...');
+      setLoading(true);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('Sign in error:', error);
+        setLoading(false);
+        
         // Provide more user-friendly error messages
         let userFriendlyMessage = error.message;
         
@@ -145,8 +151,9 @@ export const useAuth = () => {
       }
 
       if (data?.session?.user) {
-        console.log('Login successful:', data.session.user.id);
-        await fetchUserProfile(data.session.user.id);
+        console.log('Login successful, session created:', data.session.user.id);
+        // Don't manually fetch profile here - let the auth state change handler do it
+        // This prevents race conditions and duplicate loading states
         return { success: true };
       } else {
         console.log('Login returned no session');
@@ -163,14 +170,19 @@ export const useAuth = () => {
   };
 
   const signUp = async (email: string, password: string, name: string) => {
-    setLoading(true);
     try {
+      console.log('Starting sign up process...');
+      setLoading(true);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
       
       if (error) {
+        console.error('Sign up error:', error);
+        setLoading(false);
+        
         // Provide more user-friendly error messages for sign up
         let userFriendlyMessage = error.message;
         
@@ -188,6 +200,8 @@ export const useAuth = () => {
       }
 
       if (data.user) {
+        console.log('Sign up successful, creating profile...');
+        
         const { error: profileError } = await supabase
           .from('profiles')
           .insert([
@@ -204,6 +218,8 @@ export const useAuth = () => {
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
+          setLoading(false);
+          
           let userFriendlyMessage = 'Failed to create user profile. Please try again.';
           
           if (profileError.message.includes('duplicate key')) {
@@ -215,9 +231,11 @@ export const useAuth = () => {
         }
 
         console.log('Sign up + profile creation successful');
-        await fetchUserProfile(data.user.id);
+        // Don't manually fetch profile here - let the auth state change handler do it
         return { success: true };
       }
+      
+      setLoading(false);
       return { success: false, error: 'No user returned' };
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -250,7 +268,6 @@ export const useAuth = () => {
   const signOut = async () => {
     try {
       console.log('Signing out...');
-      setLoading(true);
       
       // If it's a guest user, just clear the state
       if (user?.isGuest) {

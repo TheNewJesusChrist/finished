@@ -26,19 +26,28 @@ const Auth: React.FC = () => {
 
     try {
       if (isLogin) {
+        console.log('Attempting to sign in...');
         const result = await signIn(formData.email, formData.password);
         if (result.success) {
           toast.success('Welcome back, young Jedi!');
-          navigate('/courses');
+          // Small delay to allow auth state to update
+          setTimeout(() => {
+            navigate('/courses');
+          }, 500);
         }
       } else {
+        console.log('Attempting to sign up...');
         const result = await signUp(formData.email, formData.password, formData.name);
         if (result.success) {
           toast.success('Your journey begins now!');
-          navigate('/courses');
+          // Small delay to allow auth state to update
+          setTimeout(() => {
+            navigate('/courses');
+          }, 500);
         }
       }
     } catch (error: any) {
+      console.error('Auth error:', error);
       const errorMessage = error.message || 'Something went wrong';
       setError(errorMessage);
       toast.error(errorMessage);
