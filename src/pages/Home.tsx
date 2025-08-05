@@ -41,7 +41,7 @@ const Home: React.FC = () => {
     <div className={`min-h-screen ${theme === 'dark' ? 'space-bg' : 'bg-gradient-to-br from-gray-50 to-blue-50'}`}>
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className={`absolute inset-0 ${theme === 'dark' ? 'bg-gradient-to-r from-blue-900/20 to-purple-900/20' : 'bg-gradient-to-r from-indigo-100/50 to-purple-100/50'}`}></div>
+        <div className={`absolute inset-0 ${theme === 'dark' ? 'bg-gradient-to-r from-blue-900/20 to-purple-900/20' : 'bg-gradient-to-r from-blue-50/30 to-indigo-50/30'}`}></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -52,9 +52,9 @@ const Home: React.FC = () => {
             <h1 className={`text-4xl md:text-6xl font-bold mb-6 orbitron ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               Master Your Skills
               <br />
-              <span className={theme === 'dark' ? 'neon-text' : 'text-indigo-600'}>Like a Jedi</span>
+              <span className={theme === 'dark' ? 'neon-text' : 'text-light-accent'}>Like a Jedi</span>
             </h1>
-            <p className={`text-xl mb-8 max-w-3xl mx-auto share-tech ${theme === 'dark' ? 'text-blue-200' : 'text-gray-600'}`}>
+            <p className={`text-xl mb-8 max-w-3xl mx-auto share-tech ${theme === 'dark' ? 'text-blue-200' : 'text-light-subheading'}`}>
               Transform your learning journey with AI-powered quizzes, daily habit tracking, 
               and personalized guidance from your Jedi mentor.
             </p>
@@ -116,7 +116,7 @@ const Home: React.FC = () => {
           <h2 className={`text-3xl font-bold mb-4 orbitron ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             Unleash Your Inner Jedi
           </h2>
-          <p className={`text-lg max-w-2xl mx-auto share-tech ${theme === 'dark' ? 'text-blue-200' : 'text-gray-600'}`}>
+          <p className={`text-lg max-w-2xl mx-auto share-tech ${theme === 'dark' ? 'text-blue-200' : 'text-light-subheading'}`}>
             Our comprehensive platform combines cutting-edge AI with proven learning methodologies 
             to help you master any skill.
           </p>

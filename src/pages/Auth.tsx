@@ -96,7 +96,7 @@ const Auth: React.FC = () => {
     <div className={`min-h-screen flex items-center justify-center p-4 ${
       theme === 'dark' 
         ? 'space-bg' 
-        : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'
+        : 'bg-gradient-to-br from-light-bg via-blue-50 to-blue-100'
     }`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -124,12 +124,12 @@ const Auth: React.FC = () => {
             <img src="/starwars/lightsaber.svg" alt="Lightsaber" className="h-10 w-10" />
           </motion.div>
           <h2 className={`text-2xl font-bold mb-2 orbitron ${
-            theme === 'dark' ? 'text-white' : 'text-slate-900'
+            theme === 'dark' ? 'text-white' : 'text-light-heading'
           }`}>
             {isLogin ? 'Welcome Back' : 'Begin Your Journey'}
           </h2>
           <p className={`share-tech ${
-            theme === 'dark' ? 'text-blue-200' : 'text-slate-600'
+            theme === 'dark' ? 'text-blue-200' : 'text-light-subheading'
           }`}>
             {isLogin ? 'Continue your path to mastery' : 'Become a Jedi Master'}
           </p>
@@ -280,7 +280,7 @@ const Auth: React.FC = () => {
               w-full py-3 rounded-lg font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed orbitron
               ${theme === 'dark'
                 ? 'sw-button'
-                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/25 transform hover:scale-[1.02]'
+                : 'sw-button'
               }
             `}
             whileHover={{ scale: loading ? 1 : 1.02 }}

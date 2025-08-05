@@ -13,11 +13,11 @@
   --neon-glow: 0 0 10px currentColor;
   
   /* Light theme variables */
-  --light-bg: #f8fafc;
+  --light-bg: #eaf6fd;
   --light-surface: #ffffff;
-  --light-text: #0f172a;
-  --light-text-secondary: #475569;
-  --light-accent: #2563eb;
+  --light-text: #2e3a59;
+  --light-text-secondary: #7da4bd;
+  --light-accent: #2996d2;
   --light-border: #e2e8f0;
 }
 
@@ -37,7 +37,7 @@ body {
 
 /* Light theme styles */
 .light body {
-  background: linear-gradient(135deg, var(--light-bg) 0%, #f1f5f9 100%);
+  background: linear-gradient(135deg, var(--light-bg) 0%, #f0f8ff 100%);
   color: var(--light-text);
 }
 
@@ -141,18 +141,18 @@ body {
 
 /* Light theme button styles */
 .light .sw-button {
-  background: linear-gradient(45deg, #ffffff, #f8fafc);
+  background: linear-gradient(45deg, var(--light-accent), #1976d2);
   border: 1px solid var(--light-accent);
-  color: var(--light-accent);
+  color: white;
   position: relative;
   overflow: hidden;
   transition: all 0.3s ease;
 }
 
 .light .sw-button:hover {
-  background: linear-gradient(45deg, var(--light-accent), #1d4ed8);
+  background: linear-gradient(45deg, #1976d2, #0d47a1);
   color: white;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 12px rgba(41, 150, 210, 0.4);
   transform: translateY(-2px);
 }
 
@@ -229,7 +229,7 @@ body {
 
 /* Light theme background */
 .light .space-bg {
-  background: linear-gradient(135deg, var(--light-bg) 0%, #f3f4f6 100%);
+  background: linear-gradient(135deg, var(--light-bg) 0%, #f0f8ff 100%);
 }
 
 /* Hologram effect - Dark theme */
